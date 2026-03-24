@@ -37,10 +37,7 @@ const Index = () => {
       <div className="flex flex-col items-center mb-12">
         {/* Logo */}
         <div className="mb-6">
-          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M40 10 L70 35 L55 30 L65 55 L40 45 L15 55 L25 30 L10 35 Z" fill="hsl(220, 60%, 40%)" />
-            <path d="M40 10 L70 35 L55 30 L50 45 L40 35 Z" fill="hsl(35, 95%, 55%)" />
-          </svg>
+          <img src={logoWhite} alt="Logo" className="h-20 w-auto" />
         </div>
         <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight text-center">
           Atividades Complementares
