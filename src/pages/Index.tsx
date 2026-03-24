@@ -1,124 +1,83 @@
-import { useState, useMemo } from 'react';
-import { mockSubmissions, Submission, SubmissionStatus } from '@/data/mockData';
-import StatusCards from '@/components/StatusCards';
-import FilterBar from '@/components/FilterBar';
-import SubmissionQueue from '@/components/SubmissionQueue';
-import EvaluationDialog from '@/components/EvaluationDialog';
-import { toast } from 'sonner';
-import { Bell, GraduationCap } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
+import { ClipboardList, BookOpen, GraduationCap } from 'lucide-react';
+
+const roles = [
+  {
+    id: 'coordenador',
+    label: 'Coordenador',
+    description: 'Analise e valide atividades complementares dos alunos',
+    icon: ClipboardList,
+    path: '/coordenador',
+    accentColor: 'bg-orange-500',
+  },
+  {
+    id: 'professor',
+    label: 'Professor',
+    description: 'Acompanhe as atividades e o progresso dos seus alunos',
+    icon: BookOpen,
+    path: '/professor',
+    accentColor: 'bg-blue-500',
+  },
+  {
+    id: 'aluno',
+    label: 'Aluno',
+    description: 'Submeta e acompanhe suas atividades complementares',
+    icon: GraduationCap,
+    path: '/aluno',
+    accentColor: 'bg-orange-500',
+  },
+];
 
 const Index = () => {
-  const [submissions, setSubmissions] = useState<Submission[]>(mockSubmissions);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [courseFilter, setCourseFilter] = useState('all');
-  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-
-  const courses = useMemo(() => [...new Set(submissions.map((s) => s.course))], [submissions]);
-
-  const counts = useMemo(() => {
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-    const thisMonth = submissions.filter((s) => {
-      const d = new Date(s.submissionDate);
-      return d.getMonth() === month && d.getFullYear() === year;
-    });
-    return {
-      pending: submissions.filter((s) => s.status === 'pendente').length,
-      approved: thisMonth.filter((s) => s.status === 'deferido').length,
-      rejected: thisMonth.filter((s) => s.status === 'indeferido').length,
-      adjustment: submissions.filter((s) => s.status === 'ajuste').length,
-    };
-  }, [submissions]);
-
-  const filtered = useMemo(() => {
-    return submissions.filter((s) => {
-      const matchesSearch =
-        s.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.activityTitle.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = categoryFilter === 'all' || s.category === categoryFilter;
-      const matchesCourse = courseFilter === 'all' || s.course === courseFilter;
-      return matchesSearch && matchesCategory && matchesCourse;
-    });
-  }, [submissions, searchTerm, categoryFilter, courseFilter]);
-
-  const handleDecision = (id: string, status: SubmissionStatus, justification?: string) => {
-    setSubmissions((prev) =>
-      prev.map((s) =>
-        s.id === id ? { ...s, status, justification: justification || s.justification } : s
-      )
-    );
-    const labels = { deferido: 'deferida', indeferido: 'indeferida', ajuste: 'encaminhada para ajuste' };
-    toast.success(`Solicitação ${labels[status as keyof typeof labels]} com sucesso.`);
-  };
+  const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary p-2 rounded-lg">
-              <GraduationCap className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight">Atividades Complementares</h1>
-              <p className="text-xs text-muted-foreground">Painel do Coordenador</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              {counts.pending > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-urgent text-urgent-foreground border-2 border-card">
-                  {counts.pending}
-                </Badge>
-              )}
-            </button>
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-semibold">
-              C
-            </div>
-          </div>
+    <div className="min-h-screen flex flex-col items-center justify-center px-4" style={{ background: 'linear-gradient(180deg, hsl(220 60% 12%) 0%, hsl(220 60% 18%) 100%)' }}>
+      <div className="flex flex-col items-center mb-12">
+        {/* Logo */}
+        <div className="mb-6">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M40 10 L70 35 L55 30 L65 55 L40 45 L15 55 L25 30 L10 35 Z" fill="hsl(220, 60%, 40%)" />
+            <path d="M40 10 L70 35 L55 30 L50 45 L40 35 Z" fill="hsl(35, 95%, 55%)" />
+          </svg>
         </div>
-      </header>
+        <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight text-center">
+          Atividades Complementares
+        </h1>
+        <p className="text-sm md:text-base mt-2" style={{ color: 'hsl(220, 20%, 65%)' }}>
+          Selecione seu perfil de acesso
+        </p>
+      </div>
 
-      {/* Main content */}
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Visão Geral</h2>
-          <p className="text-sm text-muted-foreground mt-1">Resumo das solicitações de atividades complementares</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-4xl w-full">
+        {roles.map((role) => (
+          <button
+            key={role.id}
+            onClick={() => navigate(role.path)}
+            className="group text-left rounded-xl p-6 border transition-all duration-300 hover:scale-[1.03] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            style={{
+              background: 'hsla(220, 40%, 25%, 0.5)',
+              borderColor: 'hsla(220, 40%, 40%, 0.3)',
+            }}
+          >
+            <div
+              className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
+              style={{ background: 'hsla(220, 40%, 35%, 0.6)' }}
+            >
+              <role.icon className="h-6 w-6" style={{ color: 'hsl(35, 95%, 60%)' }} />
+            </div>
+            <h2 className="text-lg font-semibold text-white mb-1">{role.label}</h2>
+            <p className="text-sm leading-relaxed mb-4" style={{ color: 'hsl(220, 20%, 65%)' }}>
+              {role.description}
+            </p>
+            <div className={`h-1 w-10 rounded-full ${role.accentColor}`} />
+          </button>
+        ))}
+      </div>
 
-        <StatusCards
-          pending={counts.pending}
-          approved={counts.approved}
-          rejected={counts.rejected}
-          adjustment={counts.adjustment}
-        />
-
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold tracking-tight">Fila de Análise</h2>
-          <FilterBar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            categoryFilter={categoryFilter}
-            onCategoryChange={setCategoryFilter}
-            courseFilter={courseFilter}
-            onCourseChange={setCourseFilter}
-            courses={courses}
-          />
-          <SubmissionQueue submissions={filtered} onSelect={setSelectedSubmission} />
-        </div>
-      </main>
-
-      <EvaluationDialog
-        submission={selectedSubmission}
-        open={!!selectedSubmission}
-        onClose={() => setSelectedSubmission(null)}
-        onDecision={handleDecision}
-      />
+      <p className="mt-16 text-xs" style={{ color: 'hsl(220, 20%, 50%)' }}>
+        Sistema de Gestão de Atividades Complementares
+      </p>
     </div>
   );
 };
