@@ -37,12 +37,12 @@ const SubmissionQueue = ({ submissions, onSelect }: SubmissionQueueProps) => {
       <Table>
         <TableHeader>
           <TableRow style={{ background: 'hsla(220, 40%, 18%, 0.5)' }}>
-            <TableHead className="font-semibold">Aluno</TableHead>
-            <TableHead className="font-semibold">Categoria</TableHead>
-            <TableHead className="font-semibold">Atividade</TableHead>
-            <TableHead className="font-semibold text-center">Horas</TableHead>
-            <TableHead className="font-semibold">Enviado em</TableHead>
-            <TableHead className="font-semibold text-center">Status</TableHead>
+            <TableHead className="font-semibold text-white/70">Aluno</TableHead>
+            <TableHead className="font-semibold text-white/70">Categoria</TableHead>
+            <TableHead className="font-semibold text-white/70">Atividade</TableHead>
+            <TableHead className="font-semibold text-center text-white/70">Horas</TableHead>
+            <TableHead className="font-semibold text-white/70">Enviado em</TableHead>
+            <TableHead className="font-semibold text-center text-white/70">Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
