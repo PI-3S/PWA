@@ -25,12 +25,13 @@ const FilterBar = ({
   return (
     <div className="flex flex-col sm:flex-row gap-3">
       <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'hsl(220, 20%, 50%)' }} />
         <Input
           placeholder="Buscar por aluno ou atividade..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9"
+          className="pl-9 text-white placeholder:text-white/40"
+          style={{ background: 'hsla(220, 40%, 20%, 0.5)', borderColor: 'hsla(220, 40%, 35%, 0.3)' }}
         />
       </div>
       <Select value={categoryFilter} onValueChange={onCategoryChange}>
