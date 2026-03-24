@@ -49,8 +49,8 @@ const StatusCards = ({ pending, approved, rejected, adjustment }: StatusCardsPro
               <card.icon className={`h-6 w-6 ${card.iconColor}`} />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-              <p className="text-3xl font-bold tracking-tight">{card.value}</p>
+              <p className="text-sm font-medium" style={{ color: 'hsl(220, 20%, 60%)' }}>{card.label}</p>
+              <p className="text-3xl font-bold tracking-tight text-white">{card.value}</p>
             </div>
           </CardContent>
         </Card>

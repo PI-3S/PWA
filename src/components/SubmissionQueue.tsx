@@ -79,8 +79,8 @@ const SubmissionQueue = ({ submissions, onSelect }: SubmissionQueueProps) => {
                 <TableCell>
                   <span className="text-sm max-w-[200px] truncate block" style={{ color: 'hsl(220, 20%, 70%)' }}>{sub.activityTitle}</span>
                 </TableCell>
-                <TableCell className="text-center font-mono font-medium">{sub.hoursRequested}h</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
+                <TableCell className="text-center font-mono font-medium text-white">{sub.hoursRequested}h</TableCell>
+                <TableCell className="text-sm" style={{ color: 'hsl(220, 20%, 55%)' }}>
                   {new Date(sub.submissionDate).toLocaleDateString('pt-BR')}
                 </TableCell>
                 <TableCell className="text-center">
