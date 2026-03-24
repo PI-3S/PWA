@@ -33,16 +33,16 @@ const isUrgent = (dateStr: string) => {
 
 const SubmissionQueue = ({ submissions, onSelect }: SubmissionQueueProps) => {
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
+    <div className="rounded-lg border overflow-hidden" style={{ background: 'hsla(220, 40%, 20%, 0.5)', borderColor: 'hsla(220, 40%, 35%, 0.3)' }}>
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead className="font-semibold">Aluno</TableHead>
-            <TableHead className="font-semibold">Categoria</TableHead>
-            <TableHead className="font-semibold">Atividade</TableHead>
-            <TableHead className="font-semibold text-center">Horas</TableHead>
-            <TableHead className="font-semibold">Enviado em</TableHead>
-            <TableHead className="font-semibold text-center">Status</TableHead>
+          <TableRow style={{ background: 'hsla(220, 40%, 18%, 0.5)' }}>
+            <TableHead className="font-semibold text-white/70">Aluno</TableHead>
+            <TableHead className="font-semibold text-white/70">Categoria</TableHead>
+            <TableHead className="font-semibold text-white/70">Atividade</TableHead>
+            <TableHead className="font-semibold text-center text-white/70">Horas</TableHead>
+            <TableHead className="font-semibold text-white/70">Enviado em</TableHead>
+            <TableHead className="font-semibold text-center text-white/70">Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -56,7 +56,10 @@ const SubmissionQueue = ({ submissions, onSelect }: SubmissionQueueProps) => {
             submissions.map((sub) => (
               <TableRow
                 key={sub.id}
-                className="cursor-pointer hover:bg-accent/50 transition-colors"
+                className="cursor-pointer transition-colors"
+                style={{ borderColor: 'hsla(220, 40%, 35%, 0.2)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsla(220, 40%, 25%, 0.4)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 onClick={() => onSelect(sub)}
               >
                 <TableCell>
@@ -65,19 +68,19 @@ const SubmissionQueue = ({ submissions, onSelect }: SubmissionQueueProps) => {
                       <AlertTriangle className="h-4 w-4 text-urgent shrink-0" />
                     )}
                     <div>
-                      <p className="font-medium">{sub.studentName}</p>
-                      <p className="text-xs text-muted-foreground">{sub.course}</p>
+                      <p className="font-medium text-white">{sub.studentName}</p>
+                      <p className="text-xs" style={{ color: 'hsl(220, 20%, 55%)' }}>{sub.course}</p>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm">{categoryLabels[sub.category]}</span>
+                  <span className="text-sm" style={{ color: 'hsl(220, 20%, 70%)' }}>{categoryLabels[sub.category]}</span>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm max-w-[200px] truncate block">{sub.activityTitle}</span>
+                  <span className="text-sm max-w-[200px] truncate block" style={{ color: 'hsl(220, 20%, 70%)' }}>{sub.activityTitle}</span>
                 </TableCell>
-                <TableCell className="text-center font-mono font-medium">{sub.hoursRequested}h</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
+                <TableCell className="text-center font-mono font-medium text-white">{sub.hoursRequested}h</TableCell>
+                <TableCell className="text-sm" style={{ color: 'hsl(220, 20%, 55%)' }}>
                   {new Date(sub.submissionDate).toLocaleDateString('pt-BR')}
                 </TableCell>
                 <TableCell className="text-center">

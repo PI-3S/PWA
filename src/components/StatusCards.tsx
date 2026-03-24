@@ -43,14 +43,14 @@ const StatusCards = ({ pending, approved, rejected, adjustment }: StatusCardsPro
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((card) => (
-        <Card key={card.label} className={`border ${card.colorClass}`}>
+        <Card key={card.label} className={`border ${card.colorClass}`} style={{ background: 'hsla(220, 40%, 20%, 0.5)', borderColor: 'hsla(220, 40%, 35%, 0.3)' }}>
           <CardContent className="p-5 flex items-center gap-4">
             <div className={`p-3 rounded-lg ${card.colorClass}`}>
               <card.icon className={`h-6 w-6 ${card.iconColor}`} />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-              <p className="text-3xl font-bold tracking-tight">{card.value}</p>
+              <p className="text-sm font-medium" style={{ color: 'hsl(220, 20%, 60%)' }}>{card.label}</p>
+              <p className="text-3xl font-bold tracking-tight text-white">{card.value}</p>
             </div>
           </CardContent>
         </Card>
