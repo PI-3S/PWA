@@ -56,7 +56,10 @@ const SubmissionQueue = ({ submissions, onSelect }: SubmissionQueueProps) => {
             submissions.map((sub) => (
               <TableRow
                 key={sub.id}
-                className="cursor-pointer hover:bg-accent/50 transition-colors"
+                className="cursor-pointer transition-colors"
+                style={{ borderColor: 'hsla(220, 40%, 35%, 0.2)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsla(220, 40%, 25%, 0.4)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 onClick={() => onSelect(sub)}
               >
                 <TableCell>
