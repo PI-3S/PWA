@@ -68,8 +68,8 @@ const SubmissionQueue = ({ submissions, onSelect }: SubmissionQueueProps) => {
                       <AlertTriangle className="h-4 w-4 text-urgent shrink-0" />
                     )}
                     <div>
-                      <p className="font-medium">{sub.studentName}</p>
-                      <p className="text-xs text-muted-foreground">{sub.course}</p>
+                      <p className="font-medium text-white">{sub.studentName}</p>
+                      <p className="text-xs" style={{ color: 'hsl(220, 20%, 55%)' }}>{sub.course}</p>
                     </div>
                   </div>
                 </TableCell>
