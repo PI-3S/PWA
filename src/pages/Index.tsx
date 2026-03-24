@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, BookOpen, GraduationCap } from 'lucide-react';
+import logoWhite from '@/assets/logo-white.png';
 
 const roles = [
   {
