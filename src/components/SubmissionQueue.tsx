@@ -36,7 +36,7 @@ const SubmissionQueue = ({ submissions, onSelect }: SubmissionQueueProps) => {
     <div className="rounded-lg border overflow-hidden" style={{ background: 'hsla(220, 40%, 20%, 0.5)', borderColor: 'hsla(220, 40%, 35%, 0.3)' }}>
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50">
+          <TableRow style={{ background: 'hsla(220, 40%, 18%, 0.5)' }}>
             <TableHead className="font-semibold">Aluno</TableHead>
             <TableHead className="font-semibold">Categoria</TableHead>
             <TableHead className="font-semibold">Atividade</TableHead>
