@@ -33,7 +33,7 @@ const isUrgent = (dateStr: string) => {
 
 const SubmissionQueue = ({ submissions, onSelect }: SubmissionQueueProps) => {
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
+    <div className="rounded-lg border overflow-hidden" style={{ background: 'hsla(220, 40%, 20%, 0.5)', borderColor: 'hsla(220, 40%, 35%, 0.3)' }}>
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
