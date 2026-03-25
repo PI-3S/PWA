@@ -118,7 +118,6 @@ const Login = () => {
                 style={{
                   background: 'hsla(220, 40%, 12%, 0.8)',
                   border: `1px solid hsla(220, 30%, 25%, 0.5)`,
-                  focusRingColor: config.iconColor,
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = config.iconColor;
