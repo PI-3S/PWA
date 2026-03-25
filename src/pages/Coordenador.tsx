@@ -58,36 +58,47 @@ const Coordenador = () => {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, hsl(220 60% 12%) 0%, hsl(220 60% 18%) 100%)' }}>
+    <div className="min-h-screen futuristic-bg grid-pattern relative overflow-hidden">
+      {/* Ambient glow */}
+      <div className="fixed top-0 left-1/3 w-[500px] h-[500px] rounded-full opacity-10 blur-[150px] pointer-events-none" style={{ background: 'hsl(200, 80%, 50%)' }} />
+      <div className="fixed bottom-0 right-1/4 w-[400px] h-[400px] rounded-full opacity-10 blur-[130px] pointer-events-none" style={{ background: 'hsl(30, 95%, 55%)' }} />
+
       {/* Header */}
-      <header className="sticky top-0 z-40" style={{ background: 'hsla(220, 60%, 10%, 0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid hsla(220, 40%, 30%, 0.3)' }}>
+      <header className="sticky top-0 z-40 glass-header">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium"
-              style={{ color: 'hsl(220, 20%, 65%)', background: 'hsla(220, 40%, 25%, 0.4)' }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 text-sm font-medium glow-border hover:bg-white/5"
+              style={{ color: 'hsl(200, 30%, 65%)' }}
             >
               <ArrowLeft className="h-4 w-4" />
               Voltar
             </button>
-            <div className="h-6 w-px" style={{ background: 'hsla(220, 40%, 40%, 0.3)' }} />
+            <div className="h-6 w-px" style={{ background: 'hsla(200, 80%, 50%, 0.15)' }} />
             <img src={logoWhite} alt="Logo" className="h-9 w-auto" />
             <div>
-              <h1 className="text-base font-bold tracking-tight text-white">Atividades Complementares</h1>
-              <p className="text-xs" style={{ color: 'hsl(220, 20%, 55%)' }}>Painel do Coordenador</p>
+              <h1 className="text-base font-bold tracking-wider text-white font-display uppercase text-xs">Atividades Complementares</h1>
+              <p className="text-xs" style={{ color: 'hsl(200, 30%, 50%)' }}>Painel do Coordenador</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-lg transition-colors" style={{ color: 'hsl(220, 20%, 65%)' }}>
+            <button className="relative p-2 rounded-lg transition-all duration-300 glow-border hover:bg-white/5" style={{ color: 'hsl(200, 30%, 65%)' }}>
               <Bell className="h-5 w-5" />
               {counts.pending > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-urgent text-urgent-foreground border-2" style={{ borderColor: 'hsl(220, 60%, 10%)' }}>
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-urgent text-urgent-foreground border-2 animate-pulse-slow" style={{ borderColor: 'hsl(220, 65%, 8%)' }}>
                   {counts.pending}
                 </Badge>
               )}
             </button>
-            <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: 'hsl(35, 95%, 55%)', color: 'hsl(220, 60%, 12%)' }}>
+            <div
+              className="h-9 w-9 rounded-lg flex items-center justify-center text-sm font-bold font-display"
+              style={{
+                background: 'linear-gradient(135deg, hsl(30, 95%, 55%), hsl(35, 95%, 65%))',
+                color: 'hsl(220, 65%, 8%)',
+                boxShadow: '0 0 20px -5px hsla(30, 95%, 55%, 0.4)',
+              }}
+            >
               C
             </div>
           </div>
@@ -95,10 +106,10 @@ const Coordenador = () => {
       </header>
 
       {/* Main content */}
-      <main className="container mx-auto px-4 py-6 space-y-6">
+      <main className="container mx-auto px-4 py-8 space-y-8 relative z-10">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Visão Geral</h2>
-          <p className="text-sm mt-1" style={{ color: 'hsl(220, 20%, 55%)' }}>Resumo das solicitações de atividades complementares</p>
+          <h2 className="text-2xl font-bold tracking-wider text-white font-display uppercase text-glow">Visão Geral</h2>
+          <p className="text-sm mt-1" style={{ color: 'hsl(200, 30%, 50%)' }}>Resumo das solicitações de atividades complementares</p>
         </div>
 
         <StatusCards
@@ -108,8 +119,8 @@ const Coordenador = () => {
           adjustment={counts.adjustment}
         />
 
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold tracking-tight text-white">Fila de Análise</h2>
+        <div className="space-y-5">
+          <h2 className="text-xl font-bold tracking-wider text-white font-display uppercase">Fila de Análise</h2>
           <FilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
