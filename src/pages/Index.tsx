@@ -63,7 +63,7 @@ const Index = () => {
         {roles.map((role) => (
           <button
             key={role.id}
-            onClick={() => navigate(role.path)}
+            onClick={() => navigate(`/login/${role.id}`)}
             className="group text-left rounded-xl p-6 transition-all duration-500 hover:scale-[1.04] focus:outline-none focus:ring-2 focus:ring-cyan-400/40 scan-line"
             style={{
               background: `linear-gradient(145deg, hsla(220, 50%, 15%, 0.7), hsla(220, 50%, 12%, 0.8))`,
