@@ -54,6 +54,9 @@ const Index = () => {
         <h1 className="text-3xl md:text-4xl font-display font-bold text-white tracking-widest text-center text-glow uppercase">
           Atividades Complementares
         </h1>
+        <span className="text-lg md:text-xl font-display font-semibold tracking-[0.3em] uppercase mt-2" style={{ color: 'hsl(30, 95%, 60%)' }}>
+          SENAC
+        </span>
         <p className="text-sm md:text-base mt-3 tracking-wide" style={{ color: 'hsl(200, 30%, 55%)' }}>
           Selecione seu perfil de acesso
         </p>
