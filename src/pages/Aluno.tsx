@@ -55,6 +55,8 @@ const navItems = [
 
 const Aluno = () => {
   const navigate = useNavigate();
+  const userEmail = localStorage.getItem('userEmail') || '';
+  const userName = userEmail.split('@')[0].replace(/[0-9]/g, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._]/g, ' ').trim() || 'Aluno';
   const [activeSection, setActiveSection] = useState('progress');
   const [selectedRejection, setSelectedRejection] = useState<StudentSubmission | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -113,7 +115,7 @@ const Aluno = () => {
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm" style={{ color: 'hsl(220, 20%, 60%)' }}>João Silva</span>
+            <span className="text-sm capitalize" style={{ color: 'hsl(220, 20%, 60%)' }}>{userName}</span>
             <button
               onClick={() => navigate('/')}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-display tracking-wider uppercase transition-all hover:opacity-80"

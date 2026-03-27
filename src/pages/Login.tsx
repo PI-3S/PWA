@@ -49,7 +49,8 @@ const Login = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: integrate real auth
+    // Save email to extract user name
+    localStorage.setItem('userEmail', email);
     navigate(config.redirectPath);
   };
 
