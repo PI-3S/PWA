@@ -99,6 +99,8 @@ const categoryIcons: Record<string, typeof BookOpen> = {
 
 const Professor = () => {
   const navigate = useNavigate();
+  const userEmail = localStorage.getItem('userEmail') || '';
+  const userName = userEmail.split('@')[0].replace(/[0-9]/g, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._]/g, ' ').trim() || 'Professor';
   const [submissions, setSubmissions] = useState<ProfSubmission[]>(mockData);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
