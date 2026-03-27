@@ -42,10 +42,7 @@ const Index = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 futuristic-bg grid-pattern relative overflow-hidden">
-      {/* Ambient glow orbs */}
-      <div className="absolute top-1/4 -left-32 w-96 h-96 rounded-full opacity-20 blur-[120px]" style={{ background: 'hsl(200, 80%, 50%)' }} />
-      <div className="absolute bottom-1/4 -right-32 w-96 h-96 rounded-full opacity-15 blur-[120px]" style={{ background: 'hsl(30, 95%, 55%)' }} />
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" style={{ background: 'linear-gradient(165deg, hsl(220, 50%, 10%) 0%, hsl(225, 45%, 14%) 40%, hsl(220, 45%, 11%) 100%)' }}>
 
       <div className="flex flex-col items-center mb-14 relative z-10">
         <div className="mb-8">
@@ -67,7 +64,7 @@ const Index = () => {
           <button
             key={role.id}
             onClick={() => navigate(`/login/${role.id}`)}
-            className="group text-left rounded-xl p-6 transition-all duration-500 hover:scale-[1.04] focus:outline-none focus:ring-2 focus:ring-cyan-400/40 scan-line"
+            className="group text-left rounded-xl p-6 transition-all duration-500 hover:scale-[1.04] focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
             style={{
               background: `linear-gradient(145deg, hsla(220, 50%, 15%, 0.7), hsla(220, 50%, 12%, 0.8))`,
               border: `1px solid ${role.borderColor}`,
