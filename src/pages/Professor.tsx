@@ -209,7 +209,7 @@ const Professor = () => {
                 </span>
               )}
             </button>
-            <span className="text-sm" style={{ color: 'hsl(220, 20%, 60%)' }}>Prof. Maria Silva</span>
+            <span className="text-sm capitalize" style={{ color: 'hsl(220, 20%, 60%)' }}>Prof. {userName}</span>
             <button
               onClick={() => navigate('/')}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-display tracking-wider uppercase transition-all hover:opacity-80"
