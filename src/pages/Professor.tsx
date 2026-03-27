@@ -309,7 +309,7 @@ const Professor = () => {
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-white">{sub.studentName}</span>
                           {sub.verified && (
-                            <ShieldCheck className="h-3.5 w-3.5" style={{ color: 'hsl(152, 60%, 50%)' }} title="Aluno Verificado" />
+                            <ShieldCheck className="h-3.5 w-3.5" style={{ color: 'hsl(152, 60%, 50%)' }} />
                           )}
                         </div>
                         <span className="text-xs font-mono" style={{ color: 'hsl(220, 20%, 45%)' }}>Mat. {sub.studentId}</span>
