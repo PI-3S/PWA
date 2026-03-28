@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Mail, Lock, LogIn, ClipboardList, BookOpen, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, LogIn, ClipboardList, BookOpen, GraduationCap, ShieldCheck } from 'lucide-react';
 import logoWhite from '@/assets/logo-white.png';
 
 const roleConfig: Record<string, { label: string; icon: typeof ClipboardList; glowColor: string; borderColor: string; iconColor: string; accentGradient: string; redirectPath: string }> = {
+  superadmin: {
+    label: 'Super Admin',
+    icon: ShieldCheck,
+    glowColor: 'hsla(210, 80%, 55%, 0.15)',
+    borderColor: 'hsla(210, 80%, 55%, 0.25)',
+    iconColor: 'hsl(210, 80%, 60%)',
+    accentGradient: 'linear-gradient(90deg, hsl(210, 80%, 55%), hsl(220, 80%, 65%))',
+    redirectPath: '/admin',
+  },
   coordenador: {
     label: 'Coordenador',
     icon: ClipboardList,

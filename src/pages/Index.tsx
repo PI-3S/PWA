@@ -1,8 +1,19 @@
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, GraduationCap, ChevronRight } from 'lucide-react';
+import { ClipboardList, GraduationCap, ShieldCheck, ChevronRight } from 'lucide-react';
 import logoWhite from '@/assets/logo-white.png';
 
 const roles = [
+  {
+    id: 'superadmin',
+    label: 'Super Admin',
+    description: 'Gerencie cursos, usuários e configurações globais do sistema',
+    icon: ShieldCheck,
+    path: '/admin',
+    glowColor: 'hsla(210, 80%, 55%, 0.15)',
+    borderColor: 'hsla(210, 80%, 55%, 0.25)',
+    iconColor: 'hsl(210, 80%, 60%)',
+    accentGradient: 'linear-gradient(90deg, hsl(210, 80%, 55%), hsl(220, 80%, 65%))',
+  },
   {
     id: 'coordenador',
     label: 'Coordenador',
