@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, BookOpen, GraduationCap, ChevronRight } from 'lucide-react';
+import { ClipboardList, GraduationCap, ChevronRight } from 'lucide-react';
 import logoWhite from '@/assets/logo-white.png';
 
 const roles = [
@@ -13,17 +13,6 @@ const roles = [
     borderColor: 'hsla(30, 95%, 55%, 0.25)',
     iconColor: 'hsl(30, 95%, 60%)',
     accentGradient: 'linear-gradient(90deg, hsl(30, 95%, 55%), hsl(40, 95%, 65%))',
-  },
-  {
-    id: 'professor',
-    label: 'Professor',
-    description: 'Acompanhe as atividades e o progresso dos seus alunos',
-    icon: BookOpen,
-    path: '/professor',
-    glowColor: 'hsla(200, 80%, 50%, 0.15)',
-    borderColor: 'hsla(200, 80%, 50%, 0.25)',
-    iconColor: 'hsl(200, 80%, 60%)',
-    accentGradient: 'linear-gradient(90deg, hsl(200, 80%, 50%), hsl(210, 80%, 65%))',
   },
   {
     id: 'aluno',
