@@ -15,17 +15,6 @@ const roles = [
     accentGradient: 'linear-gradient(90deg, hsl(30, 95%, 55%), hsl(40, 95%, 65%))',
   },
   {
-    id: 'professor',
-    label: 'Professor',
-    description: 'Acompanhe as atividades e o progresso dos seus alunos',
-    icon: BookOpen,
-    path: '/professor',
-    glowColor: 'hsla(200, 80%, 50%, 0.15)',
-    borderColor: 'hsla(200, 80%, 50%, 0.25)',
-    iconColor: 'hsl(200, 80%, 60%)',
-    accentGradient: 'linear-gradient(90deg, hsl(200, 80%, 50%), hsl(210, 80%, 65%))',
-  },
-  {
     id: 'aluno',
     label: 'Aluno',
     description: 'Submeta e acompanhe suas atividades complementares',
