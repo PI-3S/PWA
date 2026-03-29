@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, Upload, Clock, CheckCircle2, XCircle, Pencil, CloudUpload, FileText, ChevronRight, BarChart3, Send, Calendar, BookOpen, GraduationCap, Beaker, Users } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
