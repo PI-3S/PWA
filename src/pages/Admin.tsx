@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, FileCheck, ScrollText, Settings,
   LogOut, Search, Plus, Pencil, Trash2, Eye, Check, X, ChevronRight,
@@ -117,8 +118,8 @@ const accentOrange = 'hsl(30, 95%, 55%)';
 // ── Component ──────────────────────────────────────────
 const Admin = () => {
   const navigate = useNavigate();
-  const userEmail = localStorage.getItem('userEmail') || '';
-  const userName = userEmail.split('@')[0].replace(/[0-9]/g, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._]/g, ' ').trim() || 'Admin';
+  const { profile, signOut } = useAuth();
+  const userName = profile?.nome || localStorage.getItem('userEmail')?.split('@')[0]?.replace(/[0-9]/g, '')?.replace(/[._]/g, ' ')?.trim() || 'Admin';
   const [section, setSection] = useState('dashboard');
   const [courses, setCourses] = useState<Course[]>(mockCourses);
   const [users] = useState<SystemUser[]>(mockUsers);
@@ -256,7 +257,7 @@ const Admin = () => {
             </div>
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={async () => { await signOut(); navigate('/'); }}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-display tracking-wider uppercase transition-all hover:opacity-80"
             style={{ background: 'hsla(0, 70%, 50%, 0.12)', border: '1px solid hsla(0, 70%, 50%, 0.25)', color: 'hsl(0, 70%, 65%)' }}
           >

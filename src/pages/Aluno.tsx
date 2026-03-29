@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, Upload, Clock, CheckCircle2, XCircle, Pencil, CloudUpload, FileText, ChevronRight, BarChart3, Send, Calendar, BookOpen, GraduationCap, Beaker, Users } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,8 +56,8 @@ const navItems = [
 
 const Aluno = () => {
   const navigate = useNavigate();
-  const userEmail = localStorage.getItem('userEmail') || '';
-  const userName = userEmail.split('@')[0].replace(/[0-9]/g, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._]/g, ' ').trim() || 'Aluno';
+  const { profile, signOut } = useAuth();
+  const userName = profile?.nome || localStorage.getItem('userEmail')?.split('@')[0]?.replace(/[0-9]/g, '')?.replace(/[._]/g, ' ')?.trim() || 'Aluno';
   const [activeSection, setActiveSection] = useState('progress');
   const [selectedRejection, setSelectedRejection] = useState<StudentSubmission | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -117,7 +118,7 @@ const Aluno = () => {
           <div className="flex items-center gap-4">
             <span className="text-sm capitalize" style={{ color: 'hsl(220, 20%, 60%)' }}>{userName}</span>
             <button
-              onClick={() => navigate('/')}
+              onClick={async () => { await signOut(); navigate('/'); }}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-display tracking-wider uppercase transition-all hover:opacity-80"
               style={{
                 background: 'hsla(0, 70%, 50%, 0.15)',
