@@ -257,7 +257,7 @@ const Admin = () => {
             </div>
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={async () => { await signOut(); navigate('/'); }}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-display tracking-wider uppercase transition-all hover:opacity-80"
             style={{ background: 'hsla(0, 70%, 50%, 0.12)', border: '1px solid hsla(0, 70%, 50%, 0.25)', color: 'hsl(0, 70%, 65%)' }}
           >

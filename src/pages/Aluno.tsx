@@ -118,7 +118,7 @@ const Aluno = () => {
           <div className="flex items-center gap-4">
             <span className="text-sm capitalize" style={{ color: 'hsl(220, 20%, 60%)' }}>{userName}</span>
             <button
-              onClick={() => navigate('/')}
+              onClick={async () => { await signOut(); navigate('/'); }}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-display tracking-wider uppercase transition-all hover:opacity-80"
               style={{
                 background: 'hsla(0, 70%, 50%, 0.15)',
