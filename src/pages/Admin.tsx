@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, FileCheck, ScrollText, Settings,
   LogOut, Search, Plus, Pencil, Trash2, Eye, Check, X, ChevronRight,
