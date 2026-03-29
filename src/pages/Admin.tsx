@@ -118,8 +118,8 @@ const accentOrange = 'hsl(30, 95%, 55%)';
 // ── Component ──────────────────────────────────────────
 const Admin = () => {
   const navigate = useNavigate();
-  const userEmail = localStorage.getItem('userEmail') || '';
-  const userName = userEmail.split('@')[0].replace(/[0-9]/g, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._]/g, ' ').trim() || 'Admin';
+  const { profile, signOut } = useAuth();
+  const userName = profile?.nome || localStorage.getItem('userEmail')?.split('@')[0]?.replace(/[0-9]/g, '')?.replace(/[._]/g, ' ')?.trim() || 'Admin';
   const [section, setSection] = useState('dashboard');
   const [courses, setCourses] = useState<Course[]>(mockCourses);
   const [users] = useState<SystemUser[]>(mockUsers);
