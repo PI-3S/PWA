@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, LogIn, ClipboardList, GraduationCap, ShieldCheck } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import logoWhite from '@/assets/logo-white.png';
 
@@ -38,14 +37,13 @@ const roleConfig: Record<string, { label: string; icon: typeof ClipboardList; gl
   },
 };
 
+const API_BASE = 'https://back-end-banco-five.vercel.app';
+
 const Login = () => {
   const { role } = useParams<{ role: string }>();
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [nome, setNome] = useState('');
   const [loading, setLoading] = useState(false);
 
   const config = roleConfig[role || ''];
@@ -60,25 +58,31 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    if (isRegistering) {
-      const { error } = await signUp(email, password, {
-        nome: nome || email.split('@')[0],
-        perfil: config.perfil,
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha: password }),
       });
-      if (error) {
-        toast.error(error.message || 'Erro ao criar conta.');
-      } else {
-        toast.success('Conta criada! Verifique seu e-mail ou faça login.');
-        setIsRegistering(false);
+      const data = await res.json();
+
+      if (!res.ok || !data.token) {
+        toast.error(data.mensagem || data.message || 'E-mail ou senha inválidos.');
+        setLoading(false);
+        return;
       }
-    } else {
-      const { error } = await signIn(email, password);
-      if (error) {
-        toast.error(error.message || 'E-mail ou senha inválidos.');
-      } else {
-        localStorage.setItem('userEmail', email);
-        navigate(config.redirectPath);
+
+      // Store auth data
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('userEmail', email);
+      if (data.usuario) {
+        localStorage.setItem('userData', JSON.stringify(data.usuario));
       }
+
+      toast.success('Login realizado com sucesso!');
+      navigate(config.redirectPath);
+    } catch (err) {
+      toast.error('Erro ao conectar com o servidor.');
     }
     setLoading(false);
   };
@@ -121,33 +125,11 @@ const Login = () => {
             {config.label}
           </h1>
           <p className="text-xs mt-1 tracking-wide" style={{ color: 'hsl(200, 30%, 55%)' }}>
-            {isRegistering ? 'Crie sua conta para continuar' : 'Faça login para continuar'}
+            Faça login para continuar
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {isRegistering && (
-            <div className="space-y-2">
-              <label className="text-xs font-display uppercase tracking-widest" style={{ color: 'hsl(200, 30%, 55%)' }}>
-                Nome completo
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  required
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Seu nome completo"
-                  className="w-full pl-4 pr-4 py-3 rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-2 transition-all font-mono"
-                  style={{
-                    background: 'hsla(220, 40%, 12%, 0.8)',
-                    border: `1px solid hsla(220, 30%, 25%, 0.5)`,
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
           <div className="space-y-2">
             <label className="text-xs font-display uppercase tracking-widest" style={{ color: 'hsl(200, 30%, 55%)' }}>
               E-mail
@@ -217,19 +199,9 @@ const Login = () => {
             }}
           >
             <LogIn className="h-4 w-4" />
-            {loading ? 'Aguarde...' : isRegistering ? 'Criar Conta' : 'Entrar'}
+            {loading ? 'Aguarde...' : 'Entrar'}
           </button>
         </form>
-
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => setIsRegistering(!isRegistering)}
-            className="text-xs tracking-wide transition-colors hover:text-white"
-            style={{ color: 'hsl(200, 30%, 55%)' }}
-          >
-            {isRegistering ? 'Já tem conta? Faça login' : 'Não tem conta? Cadastre-se'}
-          </button>
-        </div>
 
         <div className="mt-6 flex justify-center">
           <div className="h-[2px] w-16 rounded-full" style={{ background: config.accentGradient }} />
