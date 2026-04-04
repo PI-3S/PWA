@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  ArrowLeft, LogOut, LayoutDashboard, FileText, Users, UserPlus,
+  LogOut, LayoutDashboard, FileText, Users, UserPlus,
   Clock, CheckCircle2, XCircle, AlertTriangle, Eye, ChevronDown, ChevronUp,
   ExternalLink, Search, Filter
 } from 'lucide-react';
