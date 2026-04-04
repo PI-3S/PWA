@@ -72,12 +72,26 @@ const Login = () => {
         return;
       }
 
+      // Validate profile matches the selected role
+      const perfilRetornado = data.usuario?.perfil;
+      if (perfilRetornado !== config.perfil) {
+        const messages: Record<string, string> = {
+          super_admin: 'Acesso negado. Esta área é restrita ao Super Admin.',
+          coordenador: 'Acesso negado. Esta área é restrita a coordenadores.',
+          aluno: 'Acesso negado. Esta área é restrita a alunos.',
+        };
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('userEmail');
+        toast.error(messages[config.perfil] || 'Acesso negado.');
+        setLoading(false);
+        return;
+      }
+
       // Store auth data
       localStorage.setItem('authToken', data.token);
       localStorage.setItem('userEmail', email);
-      if (data.usuario) {
-        localStorage.setItem('userData', JSON.stringify(data.usuario));
-      }
+      localStorage.setItem('userData', JSON.stringify(data.usuario));
 
       toast.success('Login realizado com sucesso!');
       navigate(config.redirectPath);
