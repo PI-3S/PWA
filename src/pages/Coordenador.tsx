@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  ArrowLeft, LogOut, LayoutDashboard, FileText, Users, UserPlus,
+  LogOut, LayoutDashboard, FileText, Users, UserPlus,
   Clock, CheckCircle2, XCircle, AlertTriangle, Eye, ChevronDown, ChevronUp,
   ExternalLink, Search, Filter
 } from 'lucide-react';
@@ -256,11 +256,6 @@ const Coordenador = () => {
       <header className="glass-header sticky top-0 z-50 px-6 py-4">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/')} className="flex items-center gap-2 text-sm transition-colors hover:text-white" style={{ color: accentColor }}>
-              <ArrowLeft className="h-4 w-4" />
-              <span className="font-display text-xs tracking-wider uppercase">Voltar</span>
-            </button>
-            <div className="h-5 w-px" style={{ background: 'hsla(200, 80%, 50%, 0.2)' }} />
             <img src={logoWhite} alt="Logo" className="h-8 w-auto" />
             <h1 className="font-display text-sm tracking-widest uppercase text-white">Painel do Coordenador</h1>
           </div>
