@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { Submission, categoryLabels, ActivityCategory } from '@/data/mockData';
+import { Submission, categoryLabels, ActivityCategory } from '@/data/data';
 import { CheckCircle, XCircle, Edit3, AlertTriangle, FileText, Clock, User } from 'lucide-react';
 import { toast } from 'sonner';
 

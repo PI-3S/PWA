@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, LogIn, ClipboardList, GraduationCap, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import logoWhite from '@/assets/logo-white.png';
+import { useAuth } from '@/contexts/AuthContext'; // Importe o nosso Hook
 
 const roleConfig: Record<string, { label: string; icon: typeof ClipboardList; glowColor: string; borderColor: string; iconColor: string; accentGradient: string; redirectPath: string; perfil: string }> = {
   superadmin: {
@@ -37,16 +38,17 @@ const roleConfig: Record<string, { label: string; icon: typeof ClipboardList; gl
   },
 };
 
-const API_BASE = 'https://back-end-banco-five.vercel.app';
-
 const Login = () => {
   const { role } = useParams<{ role: string }>();
   const navigate = useNavigate();
+  const { signIn, user: authUser } = useAuth(); // Usando o contexto centralizado
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const config = roleConfig[role || ''];
+  
   if (!config) {
     navigate('/');
     return null;
@@ -56,49 +58,42 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsSubmitting(true);
 
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, senha: password }),
-      });
-      const data = await res.json();
+    // 1. Usa o signIn do AuthContext (que já lida com localStorage e fetch)
+    const { error } = await signIn(email, password);
 
-      if (!res.ok || !data.token) {
-        toast.error(data.mensagem || data.message || 'E-mail ou senha inválidos.');
-        setLoading(false);
-        return;
-      }
-
-      // Validate profile matches the selected role
-      const perfilRetornado = data.usuario?.perfil;
-      if (perfilRetornado !== config.perfil) {
-        const messages: Record<string, string> = {
-          super_admin: 'Acesso negado. Esta área é restrita ao Super Admin.',
-          coordenador: 'Acesso negado. Esta área é restrita a coordenadores.',
-          aluno: 'Acesso negado. Esta área é restrita a alunos.',
-        };
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
-        localStorage.removeItem('userEmail');
-        toast.error(messages[config.perfil] || 'Acesso negado.');
-        setLoading(false);
-        return;
-      }
-
-      // Store auth data
-      localStorage.setItem('authToken', data.token);
-      localStorage.setItem('userEmail', email);
-      localStorage.setItem('userData', JSON.stringify(data.usuario));
-
-      toast.success('Login realizado com sucesso!');
-      navigate(config.redirectPath);
-    } catch (err) {
-      toast.error('Erro ao conectar com o servidor.');
+    if (error) {
+      toast.error(error);
+      setIsSubmitting(false);
+      return;
     }
-    setLoading(false);
+
+    // 2. O AuthContext acabou de salvar o usuário no estado. 
+    // Vamos pegar o perfil dele para validar se ele entrou na área certa.
+    // Como o estado do context pode demorar alguns ms para refletir, 
+    // lemos direto do localStorage para essa validação imediata.
+    const savedUser = JSON.parse(localStorage.getItem('usuario') || '{}');
+    const perfilRetornado = savedUser?.perfil;
+
+    if (perfilRetornado !== config.perfil) {
+      const messages: Record<string, string> = {
+        super_admin: 'Área restrita ao Super Admin.',
+        coordenador: 'Área restrita a coordenadores.',
+        aluno: 'Área restrita a alunos.',
+      };
+      
+      // Limpa tudo se o perfil estiver errado para o login escolhido
+      localStorage.removeItem('token');
+      localStorage.removeItem('usuario');
+      toast.error(`Acesso negado. ${messages[config.perfil]}`);
+      setIsSubmitting(false);
+      return;
+    }
+
+    toast.success('Bem-vindo ao Maestria!');
+    navigate(config.redirectPath);
+    setIsSubmitting(false);
   };
 
   return (
@@ -205,7 +200,7 @@ const Login = () => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="w-full py-3 rounded-lg text-sm font-display font-semibold uppercase tracking-widest text-white flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] hover:brightness-110 disabled:opacity-50"
             style={{
               background: config.accentGradient,
@@ -213,7 +208,7 @@ const Login = () => {
             }}
           >
             <LogIn className="h-4 w-4" />
-            {loading ? 'Aguarde...' : 'Entrar'}
+            {isSubmitting ? 'Autenticando...' : 'Entrar'}
           </button>
         </form>
 

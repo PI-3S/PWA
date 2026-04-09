@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Submission, categoryLabels, statusLabels } from '@/data/mockData';
+import { Submission, categoryLabels, statusLabels } from '@/data/data';
 import { AlertTriangle } from 'lucide-react';
 
 interface SubmissionQueueProps {

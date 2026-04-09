@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
-import { ActivityCategory, categoryLabels } from '@/data/mockData';
+import { ActivityCategory, categoryLabels } from '@/data/data';
 
 interface FilterBarProps {
   searchTerm: string;
