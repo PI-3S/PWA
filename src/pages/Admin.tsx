@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, Users, FileCheck, ScrollText, Link2,
-  LogOut, Search, Plus, Pencil, Trash2, Eye, Check, X, ChevronRight, ChevronDown, ChevronUp,
+  LogOut, Search, Plus, Pencil, Trash2, Check, X, ChevronRight, ChevronDown, ChevronUp,
   GraduationCap, Clock, Award, AlertTriangle, Filter,
   ShieldCheck, UserPlus, Bell, ExternalLink
 } from 'lucide-react';
@@ -16,11 +16,47 @@ import { toast } from 'sonner';
 import logoWhite from '@/assets/logo-white.png';
 
 const API_BASE = 'https://back-end-banco-five.vercel.app';
-const getToken = () => localStorage.getItem('authToken') || '';
-const getUser = () => { try { return JSON.parse(localStorage.getItem('userData') || '{}'); } catch { return {}; } };
-const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
-// ── Nav Items ──
+const getToken = (): string | null => {
+  // Tenta primeiro 'token' (padrão do AuthContext)
+  // Se não encontrar, tenta 'authToken' (compatibilidade)
+  const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+  const tokenExpiry = localStorage.getItem('tokenExpiry');
+  
+  if (!token) {
+    console.warn('Token não encontrado no localStorage');
+    return null;
+  }
+  
+  // Verificar se o token expirou (apenas se tiver tokenExpiry)
+  if (tokenExpiry) {
+    const expiryTime = parseInt(tokenExpiry);
+    if (Date.now() > expiryTime) {
+      console.warn('Token expirado');
+      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('tokenExpiry');
+      localStorage.removeItem('usuario');
+      localStorage.removeItem('userData');
+      return null;
+    }
+  }
+  
+  return token;
+};
+
+const getUser = () => { 
+  try { 
+    // Tenta primeiro 'usuario' (padrão do AuthContext)
+    // Se não encontrar, tenta 'userData' (compatibilidade)
+    const data = localStorage.getItem('usuario') || localStorage.getItem('userData');
+    if (!data) return { nome: '', perfil: '' };
+    return JSON.parse(data); 
+  } catch { 
+    return { nome: '', perfil: '' }; 
+  } 
+};
+
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'courses', label: 'Gestão de Cursos', icon: BookOpen },
@@ -30,7 +66,6 @@ const navItems = [
   { id: 'coordinators', label: 'Coordenadores', icon: Link2 },
 ];
 
-// ── Colors (same as before) ──
 const panelBg = 'hsl(220, 45%, 11%)';
 const cardBg = 'hsla(220, 40%, 15%, 0.7)';
 const cardBorder = 'hsla(200, 60%, 40%, 0.12)';
@@ -40,15 +75,30 @@ const labelColor = 'hsl(220, 20%, 55%)';
 const accentBlue = 'hsl(210, 80%, 55%)';
 const accentOrange = 'hsl(30, 95%, 55%)';
 
-// ── Types ──
 interface DashboardMetrics {
-  total_submissoes: number; pendentes: number; aprovadas: number; reprovadas: number;
+  total_submissoes: number;
+  pendentes: number;
+  aprovadas: number;
+  reprovadas: number;
   por_area: { area: string; total: number; aprovadas: number; pendentes: number; reprovadas: number }[];
   por_curso: { curso: string; total: number; aprovadas: number; pendentes: number; reprovadas: number }[];
 }
+
 interface Curso { id: string; nome: string; carga_horaria_minima: number; }
-interface Usuario { id: string; nome: string; email: string; perfil: string; curso_id?: string; curso_nome?: string; matricula?: string; }
-interface Submissao { id: string; aluno_id: string; status: string; data_envio: string; descricao?: string; horas_solicitadas?: number; aluno_nome?: string; curso_nome?: string; area?: string; tipo?: string; }
+interface Usuario { id: string; nome: string; email: string; perfil: string; curso_id?: string; matricula?: string; curso_nome?: string; }
+interface Submissao { 
+  id: string; 
+  aluno_id: string; 
+  status: string; 
+  data_envio: string; 
+  descricao?: string; 
+  horas_solicitadas?: number;
+  carga_horaria_solicitada?: number;
+  aluno_nome?: string; 
+  curso_nome?: string; 
+  area?: string; 
+  tipo?: string; 
+}
 interface Regra { id: string; area: string; limite_horas: number; exige_comprovante: boolean; curso_id: string; curso_nome?: string; }
 interface CoordCurso { id: string; usuario_id: string; curso_id: string; coordenador_nome?: string; coordenador_email?: string; curso_nome?: string; }
 
@@ -64,109 +114,227 @@ const Admin = () => {
   const [submissoes, setSubmissoes] = useState<Submissao[]>([]);
   const [regras, setRegras] = useState<Regra[]>([]);
   const [coordCursos, setCoordCursos] = useState<CoordCurso[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
-  // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [cursoFilter, setCursoFilter] = useState('all');
 
-  // Expanded row for validation
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [certData, setCertData] = useState<{ url_arquivo?: string; texto_extraido?: string } | null>(null);
   const [loadingCert, setLoadingCert] = useState(false);
 
-  // Dialogs / inline forms
   const [courseDialog, setCourseDialog] = useState(false);
   const [editCourse, setEditCourse] = useState<Partial<Curso>>({});
   const [userDialog, setUserDialog] = useState(false);
-  const [newUser, setNewUser] = useState<{ nome: string; email: string; senha: string; perfil: string; matricula: string; curso_id: string }>({ nome: '', email: '', senha: '', perfil: 'aluno', matricula: '', curso_id: '' });
+  const [newUser, setNewUser] = useState({ nome: '', email: '', senha: '', perfil: 'aluno', matricula: '', curso_id: '' });
   const [ruleDialog, setRuleDialog] = useState(false);
   const [editRule, setEditRule] = useState<Partial<Regra & { exige_comprovante_str: string }>>({});
   const [coordDialog, setCoordDialog] = useState(false);
-  const [newCoord, setNewCoord] = useState<{ usuario_id: string; curso_id: string }>({ usuario_id: '', curso_id: '' });
-
-  // ── API Helpers ──
-  const apiFetch = useCallback(async (path: string, opts?: RequestInit) => {
-    const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders(), ...opts });
-    if (!res.ok) throw new Error(`Erro ${res.status}`);
-    return res.json();
-  }, []);
-
-  // ── Load data ──
-  const loadDashboard = useCallback(async () => {
-    try { const d = await apiFetch('/api/dashboard/coordenador'); setMetrics(d); } catch { }
-  }, [apiFetch]);
-
-  const loadCursos = useCallback(async () => {
-    try { const d = await apiFetch('/api/cursos'); setCursos(d.cursos || d || []); } catch { }
-  }, [apiFetch]);
-
-  const loadUsuarios = useCallback(async () => {
-    try {
-      const params = roleFilter !== 'all' ? `?perfil=${roleFilter}` : '';
-      const d = await apiFetch(`/api/usuarios${params}`);
-      setUsuarios(Array.isArray(d) ? d : d.usuarios || []);
-    } catch { }
-  }, [apiFetch, roleFilter]);
-
-  const loadSubmissoes = useCallback(async () => {
-    try { const d = await apiFetch('/api/submissoes'); setSubmissoes(Array.isArray(d) ? d : d.submissoes || []); } catch { }
-  }, [apiFetch]);
-
-  const loadRegras = useCallback(async () => {
-    try { const d = await apiFetch('/api/regras'); setRegras(Array.isArray(d) ? d : d.regras || []); } catch { }
-  }, [apiFetch]);
-
-  const loadCoordCursos = useCallback(async () => {
-    try { const d = await apiFetch('/api/coordenadores-cursos'); setCoordCursos(Array.isArray(d) ? d : d.vinculos || []); } catch { }
-  }, [apiFetch]);
+  const [newCoord, setNewCoord] = useState({ usuario_id: '', curso_id: '' });
 
   useEffect(() => {
-    const u = getUser();
-    if (u.perfil && u.perfil !== 'super_admin') {
+  const checkAuth = () => {
+    const token = getToken();
+    const userData = getUser();
+    
+    console.log('Verificando autenticação:', { 
+      hasToken: !!token, 
+      perfil: userData.perfil,
+      tokenExpiry: localStorage.getItem('tokenExpiry')
+    });
+    
+    if (!token) {
+      console.log('Token não encontrado, redirecionando...');
+      navigate('/login/superadmin');
+      return;
+    }
+
+    // Verificação mais flexível do perfil
+    if (!userData.perfil || (userData.perfil !== 'super_admin' && userData.perfil !== 'admin')) {
+      console.log('Perfil não autorizado:', userData.perfil);
       toast.error('Acesso restrito ao Super Admin.');
       navigate('/login/superadmin');
       return;
     }
-    loadDashboard(); loadCursos();
-  }, []);
+
+    setIsAuthenticated(true);
+    setAuthChecked(true);
+    
+    // ADICIONE ESTA LINHA: Usa sessionStorage para não repetir o toast
+    const welcomed = sessionStorage.getItem('welcomed_admin');
+    if (!welcomed) {
+      toast.success(`Bem-vindo, ${userName}!`);
+      sessionStorage.setItem('welcomed_admin', 'true');
+    }
+  };
+
+  const timer = setTimeout(checkAuth, 100);
+  return () => clearTimeout(timer);
+}, [navigate, userName]);
+
+  const apiFetch = useCallback(async (path: string, opts?: RequestInit) => {
+    const token = getToken();
+    
+    if (!token) {
+      toast.error('Sessão expirada. Faça login novamente.');
+      navigate('/login/superadmin');
+      throw new Error('Token não encontrado');
+    }
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}${path}`, { headers, ...opts });
+      
+      if (res.status === 401 || res.status === 403) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('tokenExpiry');
+        localStorage.removeItem('userData');
+        navigate('/login/superadmin');
+        throw new Error('Não autorizado');
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.mensagem || err.error || `Erro ${res.status}`);
+      }
+      
+      return res.json();
+    } catch (error: any) {
+      if (error.message !== 'Não autorizado') {
+        console.error('API Error:', error);
+      }
+      throw error;
+    }
+  }, [navigate]);
+
+  const loadDashboard = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try { 
+      const d = await apiFetch('/api/dashboard/coordenador'); 
+      setMetrics(d.metricas || d); 
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar métricas."); 
+    }
+  }, [apiFetch, isAuthenticated]);
+
+  const loadCursos = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try { 
+      const d = await apiFetch('/api/cursos'); 
+      setCursos(d.cursos || []); 
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar cursos."); 
+    }
+  }, [apiFetch, isAuthenticated]);
+
+  const loadUsuarios = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const params = roleFilter !== 'all' ? `?perfil=${roleFilter}` : '';
+      const d = await apiFetch(`/api/usuarios${params}`);
+      setUsuarios(d.usuarios || []);
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar usuários."); 
+    }
+  }, [apiFetch, roleFilter, isAuthenticated]);
+
+  const loadSubmissoes = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try { 
+      const d = await apiFetch('/api/submissoes'); 
+      const subs = d.submissoes || [];
+      const mappedSubs = subs.map((s: any) => ({
+        ...s,
+        horas_solicitadas: s.carga_horaria_solicitada || s.horas_solicitadas
+      }));
+      setSubmissoes(mappedSubs);
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar submissões."); 
+    }
+  }, [apiFetch, isAuthenticated]);
+
+  const loadRegras = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try { 
+      const d = await apiFetch('/api/regras'); 
+      setRegras(d.regras || []); 
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar regras."); 
+    }
+  }, [apiFetch, isAuthenticated]);
+
+  const loadCoordCursos = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try { 
+      const d = await apiFetch('/api/coordenadores-cursos'); 
+      setCoordCursos(d.vinculos || []); 
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar vínculos."); 
+    }
+  }, [apiFetch, isAuthenticated]);
 
   useEffect(() => {
-    if (section === 'users') loadUsuarios();
-    if (section === 'validation') loadSubmissoes();
-    if (section === 'rules') { loadRegras(); loadCursos(); }
-    if (section === 'coordinators') { loadCoordCursos(); loadUsuarios(); loadCursos(); }
-    if (section === 'courses') loadCursos();
-    if (section === 'dashboard') { loadDashboard(); loadSubmissoes(); }
-  }, [section]);
+    if (!isAuthenticated) return;
+    loadDashboard();
+    loadCursos();
+  }, [isAuthenticated, loadDashboard, loadCursos]);
 
-  useEffect(() => { if (section === 'users') loadUsuarios(); }, [roleFilter]);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    const loadSectionData = async () => {
+      switch (section) {
+        case 'users': await loadUsuarios(); break;
+        case 'validation': await loadSubmissoes(); break;
+        case 'rules': await Promise.all([loadRegras(), loadCursos()]); break;
+        case 'coordinators': await Promise.all([loadCoordCursos(), loadUsuarios(), loadCursos()]); break;
+        case 'courses': await loadCursos(); break;
+        case 'dashboard': await Promise.all([loadDashboard(), loadSubmissoes()]); break;
+      }
+    };
+    loadSectionData();
+  }, [section, isAuthenticated]);
 
-  // ── Actions ──
+  useEffect(() => { 
+    if (section === 'users' && isAuthenticated) loadUsuarios(); 
+  }, [roleFilter]);
+
   const handleStatusChange = async (id: string, status: 'aprovado' | 'reprovado') => {
     try {
       await apiFetch(`/api/submissoes/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
       toast.success(status === 'aprovado' ? 'Submissão aprovada!' : 'Submissão reprovada.');
-      loadSubmissoes(); loadDashboard();
-    } catch { toast.error('Erro ao atualizar status.'); }
+      loadSubmissoes();
+      loadDashboard();
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao atualizar status.'); 
+    }
   };
 
   const handleSaveCourse = async () => {
     if (!editCourse.nome) { toast.error('Nome obrigatório.'); return; }
     try {
+      const body = { nome: editCourse.nome, carga_horaria_minima: editCourse.carga_horaria_minima || 200 };
       if (editCourse.id) {
-        // No PATCH route specified, just update locally
-        setCursos(prev => prev.map(c => c.id === editCourse.id ? { ...c, ...editCourse } as Curso : c));
+        await apiFetch(`/api/cursos/${editCourse.id}`, { method: 'PUT', body: JSON.stringify(body) });
         toast.success('Curso atualizado!');
       } else {
-        await apiFetch('/api/cursos', { method: 'POST', body: JSON.stringify({ nome: editCourse.nome, carga_horaria_minima: editCourse.carga_horaria_minima || 200 }) });
+        await apiFetch('/api/cursos', { method: 'POST', body: JSON.stringify(body) });
         toast.success('Curso cadastrado!');
-        loadCursos();
       }
-      setCourseDialog(false); setEditCourse({});
-    } catch { toast.error('Erro ao salvar curso.'); }
+      loadCursos();
+      setCourseDialog(false);
+      setEditCourse({});
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao salvar curso.'); 
+    }
   };
 
   const handleCreateUser = async () => {
@@ -174,19 +342,33 @@ const Admin = () => {
     try {
       await apiFetch('/api/usuarios', { method: 'POST', body: JSON.stringify(newUser) });
       toast.success('Usuário cadastrado!');
-      setUserDialog(false); setNewUser({ nome: '', email: '', senha: '', perfil: 'aluno', matricula: '', curso_id: '' });
+      setUserDialog(false);
+      setNewUser({ nome: '', email: '', senha: '', perfil: 'aluno', matricula: '', curso_id: '' });
       loadUsuarios();
-    } catch { toast.error('Erro ao cadastrar usuário.'); }
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao cadastrar usuário.'); 
+    }
   };
 
   const handleSaveRule = async () => {
     if (!editRule.area || !editRule.curso_id) { toast.error('Preencha os campos obrigatórios.'); return; }
     try {
-      await apiFetch('/api/regras', { method: 'POST', body: JSON.stringify({ area: editRule.area, limite_horas: editRule.limite_horas || 60, exige_comprovante: editRule.exige_comprovante_str === 'sim', curso_id: editRule.curso_id }) });
+      await apiFetch('/api/regras', {
+        method: 'POST',
+        body: JSON.stringify({
+          area: editRule.area,
+          limite_horas: editRule.limite_horas || 60,
+          exige_comprovante: editRule.exige_comprovante_str === 'sim',
+          curso_id: editRule.curso_id
+        })
+      });
       toast.success('Regra salva!');
-      setRuleDialog(false); setEditRule({});
+      setRuleDialog(false);
+      setEditRule({});
       loadRegras();
-    } catch { toast.error('Erro ao salvar regra.'); }
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao salvar regra.'); 
+    }
   };
 
   const handleCreateCoordVinculo = async () => {
@@ -194,40 +376,61 @@ const Admin = () => {
     try {
       await apiFetch('/api/coordenadores-cursos', { method: 'POST', body: JSON.stringify(newCoord) });
       toast.success('Vínculo criado!');
-      setCoordDialog(false); setNewCoord({ usuario_id: '', curso_id: '' });
+      setCoordDialog(false);
+      setNewCoord({ usuario_id: '', curso_id: '' });
       loadCoordCursos();
-    } catch { toast.error('Erro ao criar vínculo.'); }
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao criar vínculo.'); 
+    }
   };
 
   const handleRemoveCoordVinculo = async (id: string) => {
     try {
-      await apiFetch(`/api/alunos-cursos/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/coordenadores-cursos/${id}`, { method: 'DELETE' });
       toast.success('Vínculo removido!');
       loadCoordCursos();
-    } catch { toast.error('Erro ao remover vínculo.'); }
+    } catch (e: any) { 
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao remover vínculo.'); 
+    }
   };
 
   const loadCertificado = async (submissaoId: string) => {
-    setLoadingCert(true); setCertData(null);
+    setLoadingCert(true);
+    setCertData(null);
     try {
       const d = await apiFetch(`/api/certificados?submissao_id=${submissaoId}`);
-      const cert = Array.isArray(d) ? d[0] : (d.certificados?.[0] || d);
-      setCertData(cert || null);
-    } catch { setCertData(null); }
-    setLoadingCert(false);
+      const cert = d.certificados?.[0] || null;
+      setCertData(cert);
+    } catch (e) { 
+      setCertData(null); 
+    } finally {
+      setLoadingCert(false);
+    }
   };
 
   const toggleExpand = (id: string) => {
-    if (expandedId === id) { setExpandedId(null); setCertData(null); }
-    else { setExpandedId(id); loadCertificado(id); }
+    if (expandedId === id) { 
+      setExpandedId(null); 
+      setCertData(null); 
+    } else { 
+      setExpandedId(id); 
+      loadCertificado(id); 
+    }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('authToken'); localStorage.removeItem('userData'); localStorage.removeItem('userEmail');
-    navigate('/');
-  };
+ const handleLogout = () => {
+  // Remove todas as possíveis chaves
+  localStorage.removeItem('token');
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('tokenExpiry');
+  localStorage.removeItem('usuario');
+  localStorage.removeItem('userData');
+  localStorage.removeItem('userEmail');
+  sessionStorage.removeItem('welcomed');
+  navigate('/');
+};
 
-  // ── Filters for validation ──
   const filteredSubmissoes = submissoes.filter(s => {
     if (statusFilter !== 'all' && s.status !== statusFilter) return false;
     if (cursoFilter !== 'all' && s.curso_nome !== cursoFilter) return false;
@@ -235,13 +438,13 @@ const Admin = () => {
   });
 
   const filteredUsuarios = usuarios.filter(u => {
-    const matchSearch = u.nome?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch = u.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       u.email?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchSearch;
   });
 
   const coordenadores = usuarios.filter(u => u.perfil === 'coordenador');
 
-  // ── MetricCard ──
   const MetricCard = ({ icon: Icon, label, value, color, sub }: { icon: any; label: string; value: string | number; color: string; sub?: string }) => (
     <div className="rounded-xl p-5 transition-all duration-300 hover:scale-[1.02]" style={{ background: cardBg, border: `1px solid ${color}22`, boxShadow: `0 0 25px -10px ${color}33` }}>
       <div className="flex items-center gap-3 mb-3">
@@ -261,9 +464,22 @@ const Admin = () => {
     reprovado: { bg: 'hsla(0, 72%, 50%, 0.12)', text: 'hsl(0, 72%, 60%)', border: 'hsla(0, 72%, 50%, 0.3)' },
   };
 
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: panelBg }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-white">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) return null;
+
   return (
     <div className="min-h-screen flex" style={{ background: `linear-gradient(165deg, hsl(220, 50%, 10%) 0%, hsl(225, 45%, 14%) 40%, hsl(220, 45%, 11%) 100%)` }}>
-      {/* ── Sidebar ── */}
+      
       <aside className="w-64 shrink-0 flex flex-col border-r" style={{ background: 'hsl(220, 50%, 9%)', borderColor: cardBorder }}>
         <div className="p-5 flex items-center gap-3 border-b" style={{ borderColor: cardBorder }}>
           <img src={logoWhite} alt="Logo" className="h-9 w-auto" />
@@ -279,13 +495,9 @@ const Admin = () => {
               key={item.id}
               onClick={() => { setSection(item.id); setSearchTerm(''); setStatusFilter('all'); setCursoFilter('all'); }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200"
-              style={
-                section === item.id
-                  ? { background: `${accentBlue}18`, border: `1px solid ${accentBlue}33`, color: 'white', boxShadow: `0 0 20px -8px ${accentBlue}44` }
-                  : { color: labelColor, border: '1px solid transparent' }
-              }
+              style={section === item.id ? { background: `${accentBlue}18`, border: `1px solid ${accentBlue}33`, color: 'white' } : { color: labelColor }}
             >
-              <item.icon className="h-4 w-4" style={section === item.id ? { color: accentBlue } : {}} />
+              <item.icon className="h-4 w-4" />
               {item.label}
             </button>
           ))}
@@ -293,274 +505,176 @@ const Admin = () => {
 
         <div className="p-4 border-t" style={{ borderColor: cardBorder }}>
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold font-display" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))`, color: 'white' }}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))` }}>
               {userName.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-white capitalize truncate">{userName}</p>
+            <div>
+              <p className="text-sm text-white">{userName}</p>
               <p className="text-[10px]" style={{ color: labelColor }}>Super Admin</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-display tracking-wider uppercase transition-all hover:opacity-80"
-            style={{ background: 'hsla(0, 70%, 50%, 0.12)', border: '1px solid hsla(0, 70%, 50%, 0.25)', color: 'hsl(0, 70%, 65%)' }}
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Sair
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs uppercase" style={{ background: 'hsla(0, 70%, 50%, 0.12)', color: 'hsl(0, 70%, 65%)' }}>
+            <LogOut className="h-3.5 w-3.5" /> Sair
           </button>
         </div>
       </aside>
 
-      {/* ── Main Content ── */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 flex items-center justify-between px-6 border-b shrink-0" style={{ background: 'hsla(220, 50%, 9%, 0.8)', backdropFilter: 'blur(12px)', borderColor: cardBorder }}>
-          <h1 className="font-display text-sm tracking-widest uppercase text-white">
-            {navItems.find(n => n.id === section)?.label}
-          </h1>
-          <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-lg transition-all hover:bg-white/5" style={{ color: labelColor }}>
-              <Bell className="h-5 w-5" />
-              {metrics && metrics.pendentes > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full text-[9px] font-bold flex items-center justify-center" style={{ background: 'hsl(0, 72%, 51%)', color: 'white' }}>
-                  {metrics.pendentes}
-                </span>
-              )}
-            </button>
-          </div>
+      <div className="flex-1 flex flex-col">
+        <header className="h-14 flex items-center px-6 border-b" style={{ background: 'hsla(220, 50%, 9%, 0.8)', borderColor: cardBorder }}>
+          <h1 className="text-white text-sm uppercase tracking-widest">{navItems.find(n => n.id === section)?.label}</h1>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
-
-          {/* ══════ DASHBOARD ══════ */}
+          
+          {/* DASHBOARD */}
           {section === 'dashboard' && (
             <>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard icon={FileCheck} label="Total Submissões" value={metrics?.total_submissoes || 0} color={accentBlue} />
-                <MetricCard icon={Clock} label="Pendentes" value={metrics?.pendentes || 0} color={accentOrange} sub="Aguardando análise" />
+                <MetricCard icon={Clock} label="Pendentes" value={metrics?.pendentes || 0} color={accentOrange} />
                 <MetricCard icon={Check} label="Aprovadas" value={metrics?.aprovadas || 0} color="hsl(152, 60%, 50%)" />
                 <MetricCard icon={X} label="Reprovadas" value={metrics?.reprovadas || 0} color="hsl(0, 72%, 55%)" />
               </div>
-
-              {/* Por curso + Por área side by side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="rounded-xl p-6" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-                  <h3 className="font-display text-sm tracking-wider uppercase text-white mb-4">Submissões por Curso</h3>
-                  <div className="space-y-3">
-                    {(metrics?.por_curso || []).map((c, i) => {
-                      const max = Math.max(...(metrics?.por_curso || []).map(x => x.total), 1);
-                      return (
-                        <div key={i}>
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="text-white truncate mr-2">{c.curso}</span>
-                            <span className="font-mono" style={{ color: accentBlue }}>{c.total}</span>
-                          </div>
-                          <div className="h-2 rounded-full" style={{ background: 'hsla(220, 40%, 20%, 0.6)' }}>
-                            <div className="h-full rounded-full transition-all" style={{ width: `${(c.total / max) * 100}%`, background: accentBlue }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {(!metrics?.por_curso || metrics.por_curso.length === 0) && <p className="text-xs" style={{ color: labelColor }}>Nenhum dado disponível.</p>}
-                  </div>
-                </div>
-
-                <div className="rounded-xl p-6" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-                  <h3 className="font-display text-sm tracking-wider uppercase text-white mb-4">Submissões por Área</h3>
-                  <div className="space-y-2">
-                    {(metrics?.por_area || []).map((a, i) => (
-                      <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg" style={{ background: 'hsla(220, 40%, 18%, 0.4)' }}>
-                        <span className="text-sm text-white">{a.area}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-mono" style={{ color: 'hsl(152, 60%, 55%)' }}>{a.aprovadas} apr</span>
-                          <span className="text-xs font-mono" style={{ color: accentOrange }}>{a.pendentes} pend</span>
-                          <span className="text-sm font-mono font-bold" style={{ color: accentBlue }}>{a.total}</span>
-                        </div>
+                  <h3 className="text-white text-sm mb-4">Submissões por Curso</h3>
+                  {(metrics?.por_curso || []).map((c, i) => (
+                    <div key={i} className="mb-3">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-white">{c.curso}</span>
+                        <span style={{ color: accentBlue }}>{c.total}</span>
                       </div>
-                    ))}
-                    {(!metrics?.por_area || metrics.por_area.length === 0) && <p className="text-xs" style={{ color: labelColor }}>Nenhum dado disponível.</p>}
-                  </div>
+                      <div className="h-2 rounded-full bg-white/10">
+                        <div className="h-full rounded-full" style={{ width: `${(c.total / Math.max(...metrics!.por_curso.map(x => x.total), 1)) * 100}%`, background: accentBlue }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-
-              {/* Recent pending table */}
-              <div className="rounded-xl p-6" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-display text-sm tracking-wider uppercase text-white">Pendentes Recentes</h3>
-                  <button onClick={() => setSection('validation')} className="text-xs flex items-center gap-1 transition-colors hover:text-white" style={{ color: accentBlue }}>
-                    Ver todas <ChevronRight className="h-3 w-3" />
-                  </button>
-                </div>
-                <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${cardBorder}` }}>
-                  <table className="w-full">
-                    <thead>
-                      <tr style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
-                        {['Aluno', 'Curso', 'Área', 'Horas', 'Data', 'Ação'].map(h => (
-                          <th key={h} className="text-left px-5 py-3 text-[10px] font-display tracking-widest uppercase" style={{ color: accentBlue }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {submissoes.filter(s => s.status === 'pendente').slice(0, 5).map(sub => (
-                        <tr key={sub.id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: `1px solid ${cardBorder}` }}>
-                          <td className="px-5 py-4 text-sm text-white">{sub.aluno_nome || sub.aluno_id}</td>
-                          <td className="px-5 py-4 text-xs" style={{ color: labelColor }}>{sub.curso_nome || '—'}</td>
-                          <td className="px-5 py-4 text-xs font-mono" style={{ color: labelColor }}>{sub.area || '—'}</td>
-                          <td className="px-5 py-4 text-sm font-mono font-bold" style={{ color: accentBlue }}>{sub.horas_solicitadas || 0}h</td>
-                          <td className="px-5 py-4 text-xs font-mono" style={{ color: labelColor }}>{new Date(sub.data_envio).toLocaleDateString('pt-BR')}</td>
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => handleStatusChange(sub.id, 'aprovado')} className="p-1.5 rounded-lg transition-colors hover:bg-white/5" style={{ color: 'hsl(152, 60%, 55%)' }}><Check className="h-4 w-4" /></button>
-                              <button onClick={() => handleStatusChange(sub.id, 'reprovado')} className="p-1.5 rounded-lg transition-colors hover:bg-white/5" style={{ color: 'hsl(0, 72%, 60%)' }}><X className="h-4 w-4" /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {submissoes.filter(s => s.status === 'pendente').length === 0 && (
-                        <tr><td colSpan={6} className="px-5 py-8 text-center text-xs" style={{ color: labelColor }}>Nenhuma submissão pendente.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+                <div className="rounded-xl p-6" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+                  <h3 className="text-white text-sm mb-4">Submissões por Área</h3>
+                  {(metrics?.por_area || []).map((a, i) => (
+                    <div key={i} className="flex justify-between py-2 px-3 rounded-lg bg-white/5">
+                      <span className="text-white">{a.area}</span>
+                      <span style={{ color: accentBlue }}>{a.total}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </>
           )}
 
-          {/* ══════ COURSES ══════ */}
+          {/* COURSES */}
           {section === 'courses' && (
             <>
-              <div className="flex items-center justify-between">
-                <p className="text-sm" style={{ color: labelColor }}>Gerencie os cursos da instituição.</p>
-                <Button onClick={() => { setEditCourse({}); setCourseDialog(true); }} className="gap-2 text-xs font-display tracking-wider uppercase border-0" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))`, color: 'white' }}>
-                  <Plus className="h-4 w-4" /> Novo Curso
+              <div className="flex justify-between">
+                <h2 className="text-white text-xl">Gestão de Cursos</h2>
+                <Button onClick={() => { setEditCourse({}); setCourseDialog(true); }} style={{ background: accentBlue }}>
+                  <Plus className="h-4 w-4 mr-2" /> Novo Curso
                 </Button>
               </div>
-              <div className="rounded-xl overflow-hidden" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+              <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
                 <table className="w-full">
-                  <thead>
-                    <tr style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
-                      {['Nome do Curso', 'Carga Horária Mínima', 'Ações'].map(h => (
-                        <th key={h} className="text-left px-5 py-3 text-[10px] font-display tracking-widest uppercase" style={{ color: accentBlue }}>{h}</th>
-                      ))}
+                  <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
+                    <tr>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Nome</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Carga Horária</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {cursos.map(curso => (
-                      <tr key={curso.id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: `1px solid ${cardBorder}` }}>
-                        <td className="px-5 py-4 text-sm text-white">{curso.nome}</td>
-                        <td className="px-5 py-4 text-sm font-mono font-bold" style={{ color: accentBlue }}>{curso.carga_horaria_minima}h</td>
+                    {cursos.map(c => (
+                      <tr key={c.id} className="border-b" style={{ borderColor: cardBorder }}>
+                        <td className="px-5 py-4 text-white">{c.nome}</td>
+                        <td className="px-5 py-4" style={{ color: accentBlue }}>{c.carga_horaria_minima}h</td>
                         <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => { setEditCourse(curso); setCourseDialog(true); }} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: accentBlue }}><Pencil className="h-3.5 w-3.5" /></button>
-                            <button onClick={() => { setCursos(prev => prev.filter(c => c.id !== curso.id)); toast.success('Curso removido.'); }} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: 'hsl(0, 70%, 60%)' }}><Trash2 className="h-3.5 w-3.5" /></button>
-                          </div>
+                          <button onClick={() => { setEditCourse(c); setCourseDialog(true); }} className="mr-2" style={{ color: accentBlue }}>
+                            <Pencil className="h-4 w-4" />
+                          </button>
                         </td>
                       </tr>
                     ))}
-                    {cursos.length === 0 && <tr><td colSpan={3} className="px-5 py-8 text-center text-xs" style={{ color: labelColor }}>Nenhum curso cadastrado.</td></tr>}
                   </tbody>
                 </table>
               </div>
             </>
           )}
 
-          {/* ══════ USERS ══════ */}
+          {/* USERS */}
           {section === 'users' && (
-            <>
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: labelColor }} />
-                  <Input placeholder="Buscar por nome ou email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10 border-0 text-sm text-white placeholder:text-gray-500 font-mono" style={{ background: inputBg, border: `1px solid ${inputBorder}` }} />
-                </div>
-                <Select value={roleFilter} onValueChange={v => { setRoleFilter(v); }}>
-                  <SelectTrigger className="w-44 border-0 text-sm text-white" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}>
-                    <Filter className="h-3.5 w-3.5 mr-2" style={{ color: labelColor }} />
-                    <SelectValue placeholder="Filtrar por perfil" />
-                  </SelectTrigger>
-                  <SelectContent style={{ background: 'hsl(220, 50%, 15%)', border: `1px solid ${inputBorder}` }}>
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Input placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ background: inputBg }} />
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger style={{ background: inputBg, width: 150 }}><SelectValue placeholder="Perfil" /></SelectTrigger>
+                  <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="coordenador">Coordenadores</SelectItem>
                     <SelectItem value="aluno">Alunos</SelectItem>
+                    <SelectItem value="coordenador">Coordenadores</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button onClick={() => setUserDialog(true)} className="gap-2 text-xs font-display tracking-wider uppercase border-0" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))`, color: 'white' }}>
-                  <UserPlus className="h-4 w-4" /> Novo Usuário
+                <Button onClick={() => setUserDialog(true)} style={{ background: accentBlue }}>
+                  <UserPlus className="h-4 w-4 mr-2" /> Novo Usuário
                 </Button>
               </div>
-              <div className="rounded-xl overflow-hidden" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+              <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
                 <table className="w-full">
-                  <thead>
-                    <tr style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
-                      {['Nome', 'Email', 'Perfil', 'Curso', 'Editar'].map(h => (
-                        <th key={h} className="text-left px-5 py-3 text-[10px] font-display tracking-widest uppercase" style={{ color: accentBlue }}>{h}</th>
-                      ))}
+                  <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
+                    <tr>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Nome/Email</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Perfil</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Curso</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredUsuarios.map(u => (
-                      <tr key={u.id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: `1px solid ${cardBorder}` }}>
-                        <td className="px-5 py-4 text-sm text-white flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: u.perfil === 'coordenador' ? `${accentOrange}22` : `${accentBlue}22`, color: u.perfil === 'coordenador' ? accentOrange : accentBlue }}>
-                            {(u.nome || '?').charAt(0)}
-                          </div>
-                          {u.nome}
-                        </td>
-                        <td className="px-5 py-4 text-xs font-mono" style={{ color: labelColor }}>{u.email}</td>
+                      <tr key={u.id} className="border-b" style={{ borderColor: cardBorder }}>
                         <td className="px-5 py-4">
-                          <Badge className="text-[10px] border" style={
-                            u.perfil === 'coordenador'
-                              ? { background: `${accentOrange}12`, color: accentOrange, borderColor: `${accentOrange}33` }
-                              : { background: `${accentBlue}12`, color: accentBlue, borderColor: `${accentBlue}33` }
-                          }>{u.perfil === 'coordenador' ? 'Coordenador' : 'Aluno'}</Badge>
+                          <p className="text-white">{u.nome}</p>
+                          <p className="text-xs" style={{ color: labelColor }}>{u.email}</p>
                         </td>
-                        <td className="px-5 py-4 text-sm" style={{ color: labelColor }}>{u.curso_nome || '—'}</td>
                         <td className="px-5 py-4">
-                          <button className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: accentBlue }}><Pencil className="h-3.5 w-3.5" /></button>
+                          <Badge style={{ color: u.perfil === 'coordenador' ? accentOrange : accentBlue }}>{u.perfil}</Badge>
                         </td>
+                        <td className="px-5 py-4 text-white">{u.curso_nome || '-'}</td>
                       </tr>
                     ))}
-                    {filteredUsuarios.length === 0 && <tr><td colSpan={5} className="px-5 py-8 text-center text-xs" style={{ color: labelColor }}>Nenhum usuário encontrado.</td></tr>}
                   </tbody>
                 </table>
               </div>
-            </>
+            </div>
           )}
 
-          {/* ══════ VALIDATION ══════ */}
+          {/* VALIDATION */}
           {section === 'validation' && (
-            <>
-              <div className="flex items-center gap-3 flex-wrap">
-                <Select value={cursoFilter} onValueChange={setCursoFilter}>
-                  <SelectTrigger className="w-52 border-0 text-sm text-white" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}>
-                    <SelectValue placeholder="Filtrar por curso" />
-                  </SelectTrigger>
-                  <SelectContent style={{ background: 'hsl(220, 50%, 15%)', border: `1px solid ${inputBorder}` }}>
-                    <SelectItem value="all">Todos os cursos</SelectItem>
-                    {[...new Set(submissoes.map(s => s.curso_nome).filter(Boolean))].map(c => (
-                      <SelectItem key={c} value={c!}>{c}</SelectItem>
-                    ))}
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger style={{ background: inputBg, width: 150 }}><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="pendente">Pendentes</SelectItem>
+                    <SelectItem value="aprovado">Aprovadas</SelectItem>
+                    <SelectItem value="reprovado">Reprovadas</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-44 border-0 text-sm text-white" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}>
-                    <SelectValue placeholder="Filtrar por status" />
-                  </SelectTrigger>
-                  <SelectContent style={{ background: 'hsl(220, 50%, 15%)', border: `1px solid ${inputBorder}` }}>
+                <Select value={cursoFilter} onValueChange={setCursoFilter}>
+                  <SelectTrigger style={{ background: inputBg, width: 200 }}><SelectValue placeholder="Curso" /></SelectTrigger>
+                  <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="pendente">Pendente</SelectItem>
-                    <SelectItem value="aprovado">Aprovado</SelectItem>
-                    <SelectItem value="reprovado">Reprovado</SelectItem>
+                    {cursos.map(c => <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="rounded-xl overflow-hidden" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+              <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
                 <table className="w-full">
-                  <thead>
-                    <tr style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
-                      {['Aluno', 'Curso', 'Área', 'Tipo', 'Horas', 'Data', 'Status', 'Detalhes'].map(h => (
-                        <th key={h} className="text-left px-5 py-3 text-[10px] font-display tracking-widest uppercase" style={{ color: accentBlue }}>{h}</th>
-                      ))}
+                  <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
+                    <tr>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Aluno</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Curso</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Área</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Horas</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Status</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -568,321 +682,193 @@ const Admin = () => {
                       const sc = statusColors[sub.status] || statusColors.pendente;
                       const isExpanded = expandedId === sub.id;
                       return (
-                        <>
-                          <tr key={sub.id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: `1px solid ${cardBorder}` }}>
-                            <td className="px-5 py-4 text-sm text-white">{sub.aluno_nome || sub.aluno_id}</td>
-                            <td className="px-5 py-4 text-xs" style={{ color: labelColor }}>{sub.curso_nome || '—'}</td>
-                            <td className="px-5 py-4 text-xs font-mono" style={{ color: labelColor }}>{sub.area || '—'}</td>
-                            <td className="px-5 py-4 text-xs" style={{ color: labelColor }}>{sub.tipo || '—'}</td>
-                            <td className="px-5 py-4 text-sm font-mono font-bold" style={{ color: accentBlue }}>{sub.horas_solicitadas || 0}h</td>
-                            <td className="px-5 py-4 text-xs font-mono" style={{ color: labelColor }}>{new Date(sub.data_envio).toLocaleDateString('pt-BR')}</td>
+                        <React.Fragment key={sub.id}>
+                          <tr className="border-b" style={{ borderColor: cardBorder }}>
+                            <td className="px-5 py-4 text-white">{sub.aluno_nome}</td>
+                            <td className="px-5 py-4" style={{ color: labelColor }}>{sub.curso_nome}</td>
+                            <td className="px-5 py-4" style={{ color: labelColor }}>{sub.area}</td>
+                            <td className="px-5 py-4" style={{ color: accentBlue }}>{sub.horas_solicitadas || sub.carga_horaria_solicitada || 0}h</td>
+                            <td className="px-5 py-4"><Badge style={{ background: sc.bg, color: sc.text }}>{sub.status}</Badge></td>
                             <td className="px-5 py-4">
-                              <Badge className="text-[10px] border" style={{ background: sc.bg, color: sc.text, borderColor: sc.border }}>
-                                {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
-                              </Badge>
-                            </td>
-                            <td className="px-5 py-4">
-                              <button onClick={() => toggleExpand(sub.id)} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: accentBlue }}>
+                              <button onClick={() => toggleExpand(sub.id)} style={{ color: accentBlue }}>
                                 {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                               </button>
                             </td>
                           </tr>
                           {isExpanded && (
-                            <tr key={`${sub.id}-detail`}>
-                              <td colSpan={8} className="px-5 py-4" style={{ background: 'hsla(220, 40%, 12%, 0.5)' }}>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-[10px] font-display tracking-wider uppercase mb-1" style={{ color: labelColor }}>Descrição</p>
-                                      <p className="text-sm text-white">{sub.descricao || 'Sem descrição.'}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-[10px] font-display tracking-wider uppercase mb-1" style={{ color: labelColor }}>Carga Horária Solicitada</p>
-                                      <p className="text-sm font-mono font-bold" style={{ color: accentBlue }}>{sub.horas_solicitadas || 0}h</p>
+                            <tr>
+                              <td colSpan={6} className="px-8 py-6 bg-black/20">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-white mb-2">Descrição: {sub.descricao || '-'}</p>
+                                    <div className="flex gap-2">
+                                      <Button onClick={() => handleStatusChange(sub.id, 'reprovado')} style={{ background: 'hsla(0, 72%, 50%, 0.2)', color: 'hsl(0, 72%, 60%)' }}>
+                                        <X className="h-4 w-4 mr-2" /> Reprovar
+                                      </Button>
+                                      <Button onClick={() => handleStatusChange(sub.id, 'aprovado')} style={{ background: 'hsla(152, 60%, 40%, 0.2)', color: 'hsl(152, 60%, 55%)' }}>
+                                        <Check className="h-4 w-4 mr-2" /> Aprovar
+                                      </Button>
                                     </div>
                                   </div>
-                                  {loadingCert && <p className="text-xs" style={{ color: labelColor }}>Carregando certificado...</p>}
-                                  {certData && (
-                                    <div className="space-y-3">
-                                      <div className="rounded-lg h-48 flex items-center justify-center" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}>
-                                        {certData.url_arquivo ? (
-                                          <iframe src={certData.url_arquivo} className="w-full h-full rounded-lg" title="Preview" />
-                                        ) : (
-                                          <p className="text-xs" style={{ color: labelColor }}>Sem preview disponível.</p>
-                                        )}
-                                      </div>
-                                      {certData.url_arquivo && (
-                                        <a href={certData.url_arquivo} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs transition-colors hover:text-white" style={{ color: accentBlue }}>
-                                          <ExternalLink className="h-3.5 w-3.5" /> Abrir arquivo
-                                        </a>
-                                      )}
-                                      {certData.texto_extraido && (
-                                        <div>
-                                          <p className="text-[10px] font-display tracking-wider uppercase mb-1" style={{ color: labelColor }}>Texto Extraído (OCR)</p>
-                                          <div className="rounded-lg p-3 text-xs font-mono text-white/80 max-h-32 overflow-y-auto" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}>
-                                            {certData.texto_extraido}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                  {sub.status === 'pendente' && (
-                                    <div className="flex gap-3 justify-end pt-2">
-                                      <Button onClick={() => handleStatusChange(sub.id, 'reprovado')} className="gap-2 text-xs font-display tracking-wider uppercase border-0" style={{ background: 'hsla(0, 72%, 50%, 0.15)', color: 'hsl(0, 72%, 65%)', border: '1px solid hsla(0, 72%, 50%, 0.3)' }}>
-                                        <X className="h-4 w-4" /> Reprovar
-                                      </Button>
-                                      <Button onClick={() => handleStatusChange(sub.id, 'aprovado')} className="gap-2 text-xs font-display tracking-wider uppercase border-0" style={{ background: 'linear-gradient(135deg, hsl(152, 60%, 40%), hsl(160, 60%, 45%))', color: 'white' }}>
-                                        <Check className="h-4 w-4" /> Aprovar
-                                      </Button>
-                                    </div>
-                                  )}
+                                  <div>
+                                    {loadingCert ? <p className="text-white">Carregando...</p> : certData?.url_arquivo ? (
+                                      <iframe src={certData.url_arquivo} className="w-full h-48" title="Certificado" />
+                                    ) : <p className="text-gray-400">Certificado não disponível</p>}
+                                  </div>
                                 </div>
                               </td>
                             </tr>
                           )}
-                        </>
+                        </React.Fragment>
                       );
                     })}
-                    {filteredSubmissoes.length === 0 && <tr><td colSpan={8} className="px-5 py-8 text-center text-xs" style={{ color: labelColor }}>Nenhuma submissão encontrada.</td></tr>}
                   </tbody>
                 </table>
               </div>
-            </>
+            </div>
           )}
 
-          {/* ══════ RULES ══════ */}
+          {/* RULES */}
           {section === 'rules' && (
-            <>
-              <div className="flex items-center justify-between">
-                <p className="text-sm" style={{ color: labelColor }}>Regras de atividades complementares por curso.</p>
-                <Button onClick={() => { setEditRule({}); setRuleDialog(true); }} className="gap-2 text-xs font-display tracking-wider uppercase border-0" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))`, color: 'white' }}>
-                  <Plus className="h-4 w-4" /> Nova Regra
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <h2 className="text-white text-xl">Regras de Atividades</h2>
+                <Button onClick={() => { setEditRule({}); setRuleDialog(true); }} style={{ background: accentBlue }}>
+                  <Plus className="h-4 w-4 mr-2" /> Nova Regra
                 </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {regras.map(rule => {
-                  const cursoNome = rule.curso_nome || cursos.find(c => c.id === rule.curso_id)?.nome || '—';
-                  return (
-                    <div key={rule.id} className="rounded-xl p-5 space-y-3" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-display text-sm tracking-wider uppercase text-white">{rule.area}</h4>
-                        <button onClick={() => { setEditRule({ ...rule, exige_comprovante_str: rule.exige_comprovante ? 'sim' : 'nao' }); setRuleDialog(true); }} className="p-1.5 rounded-lg transition-colors hover:bg-white/5" style={{ color: accentBlue }}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <Badge className="text-[10px] border" style={{ background: `${accentBlue}12`, color: accentBlue, borderColor: `${accentBlue}33` }}>{cursoNome}</Badge>
-                      <div className="flex gap-4">
-                        <div>
-                          <p className="text-[10px] font-display tracking-wider uppercase" style={{ color: labelColor }}>Limite Horas</p>
-                          <p className="text-lg font-mono font-bold" style={{ color: accentBlue }}>{rule.limite_horas}h</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-display tracking-wider uppercase" style={{ color: labelColor }}>Comprovante</p>
-                          <p className="text-lg font-mono font-bold" style={{ color: rule.exige_comprovante ? 'hsl(152, 60%, 55%)' : accentOrange }}>
-                            {rule.exige_comprovante ? 'Sim' : 'Não'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {regras.length === 0 && <p className="text-xs col-span-3" style={{ color: labelColor }}>Nenhuma regra cadastrada.</p>}
+                {regras.map(r => (
+                  <div key={r.id} className="p-5 rounded-xl" style={{ background: cardBg }}>
+                    <h4 className="text-white text-lg mb-2">{r.area}</h4>
+                    <p style={{ color: labelColor }}>{r.curso_nome}</p>
+                    <p className="mt-2" style={{ color: accentBlue }}>Limite: {r.limite_horas}h</p>
+                    <Badge style={{ color: r.exige_comprovante ? 'hsl(152, 60%, 55%)' : labelColor }}>
+                      {r.exige_comprovante ? 'Exige comprovante' : 'Não exige'}
+                    </Badge>
+                  </div>
+                ))}
               </div>
-            </>
+            </div>
           )}
 
-          {/* ══════ COORDINATORS ══════ */}
+          {/* COORDINATORS */}
           {section === 'coordinators' && (
-            <>
-              <div className="flex items-center justify-between">
-                <p className="text-sm" style={{ color: labelColor }}>Vínculos entre coordenadores e cursos.</p>
-                <Button onClick={() => setCoordDialog(true)} className="gap-2 text-xs font-display tracking-wider uppercase border-0" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))`, color: 'white' }}>
-                  <Plus className="h-4 w-4" /> Novo Vínculo
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <h2 className="text-white text-xl">Vínculos de Coordenadores</h2>
+                <Button onClick={() => setCoordDialog(true)} style={{ background: accentBlue }}>
+                  <Link2 className="h-4 w-4 mr-2" /> Novo Vínculo
                 </Button>
               </div>
-              <div className="rounded-xl overflow-hidden" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+              <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
                 <table className="w-full">
-                  <thead>
-                    <tr style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
-                      {['Coordenador', 'Email', 'Curso Vinculado', 'Ação'].map(h => (
-                        <th key={h} className="text-left px-5 py-3 text-[10px] font-display tracking-widest uppercase" style={{ color: accentBlue }}>{h}</th>
-                      ))}
+                  <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
+                    <tr>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Coordenador</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Curso</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {coordCursos.map(cc => (
-                      <tr key={cc.id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: `1px solid ${cardBorder}` }}>
-                        <td className="px-5 py-4 text-sm text-white">{cc.coordenador_nome || cc.usuario_id}</td>
-                        <td className="px-5 py-4 text-xs font-mono" style={{ color: labelColor }}>{cc.coordenador_email || '—'}</td>
-                        <td className="px-5 py-4 text-sm" style={{ color: labelColor }}>{cc.curso_nome || cursos.find(c => c.id === cc.curso_id)?.nome || '—'}</td>
+                    {coordCursos.map(c => (
+                      <tr key={c.id} className="border-b" style={{ borderColor: cardBorder }}>
+                        <td className="px-5 py-4 text-white">{c.coordenador_nome}</td>
+                        <td className="px-5 py-4" style={{ color: accentOrange }}>{c.curso_nome}</td>
                         <td className="px-5 py-4">
-                          <button onClick={() => handleRemoveCoordVinculo(cc.id)} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: 'hsl(0, 70%, 60%)' }}>
-                            <Trash2 className="h-3.5 w-3.5" />
+                          <button onClick={() => handleRemoveCoordVinculo(c.id)} style={{ color: 'hsl(0, 72%, 60%)' }}>
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </td>
                       </tr>
                     ))}
-                    {coordCursos.length === 0 && <tr><td colSpan={4} className="px-5 py-8 text-center text-xs" style={{ color: labelColor }}>Nenhum vínculo cadastrado.</td></tr>}
                   </tbody>
                 </table>
               </div>
-            </>
+            </div>
           )}
 
         </main>
       </div>
 
-      {/* ── Course Dialog ── */}
+      {/* DIALOGS */}
       <Dialog open={courseDialog} onOpenChange={setCourseDialog}>
-        <DialogContent className="border-0" style={{ background: 'hsl(220, 50%, 12%)', border: `1px solid ${cardBorder}` }}>
-          <DialogHeader>
-            <DialogTitle className="font-display text-sm tracking-wider uppercase text-white">{editCourse.id ? 'Editar Curso' : 'Novo Curso'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Nome do Curso *</label>
-              <Input value={editCourse.nome || ''} onChange={e => setEditCourse({ ...editCourse, nome: e.target.value })} className="border-0 text-sm text-white font-mono" style={{ background: inputBg, border: `1px solid ${inputBorder}` }} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Carga Horária Mínima</label>
-              <Input type="number" value={editCourse.carga_horaria_minima || ''} onChange={e => setEditCourse({ ...editCourse, carga_horaria_minima: Number(e.target.value) })} className="border-0 text-sm text-white font-mono" style={{ background: inputBg, border: `1px solid ${inputBorder}` }} />
-            </div>
+        <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
+          <DialogHeader><DialogTitle className="text-white">{editCourse.id ? 'Editar Curso' : 'Novo Curso'}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <Input placeholder="Nome" value={editCourse.nome || ''} onChange={e => setEditCourse({ ...editCourse, nome: e.target.value })} style={{ background: inputBg }} />
+            <Input type="number" placeholder="Carga Horária" value={editCourse.carga_horaria_minima || ''} onChange={e => setEditCourse({ ...editCourse, carga_horaria_minima: Number(e.target.value) })} style={{ background: inputBg }} />
           </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setCourseDialog(false)} className="text-xs font-display tracking-wider uppercase" style={{ borderColor: cardBorder, color: labelColor, background: 'transparent' }}>Cancelar</Button>
-            <Button onClick={handleSaveCourse} className="text-xs font-display tracking-wider uppercase border-0" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))`, color: 'white' }}>Salvar</Button>
+          <DialogFooter>
+            <Button onClick={() => setCourseDialog(false)} variant="outline">Cancelar</Button>
+            <Button onClick={handleSaveCourse} style={{ background: accentBlue }}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── User Dialog ── */}
       <Dialog open={userDialog} onOpenChange={setUserDialog}>
-        <DialogContent className="border-0" style={{ background: 'hsl(220, 50%, 12%)', border: `1px solid ${cardBorder}` }}>
-          <DialogHeader>
-            <DialogTitle className="font-display text-sm tracking-wider uppercase text-white">Novo Usuário</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Nome Completo *</label>
-              <Input value={newUser.nome} onChange={e => setNewUser({ ...newUser, nome: e.target.value })} className="border-0 text-sm text-white font-mono" style={{ background: inputBg, border: `1px solid ${inputBorder}` }} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>E-mail *</label>
-              <Input type="email" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} className="border-0 text-sm text-white font-mono" style={{ background: inputBg, border: `1px solid ${inputBorder}` }} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Senha Provisória *</label>
-              <Input type="password" value={newUser.senha} onChange={e => setNewUser({ ...newUser, senha: e.target.value })} className="border-0 text-sm text-white font-mono" style={{ background: inputBg, border: `1px solid ${inputBorder}` }} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Perfil</label>
-                <Select value={newUser.perfil} onValueChange={v => setNewUser({ ...newUser, perfil: v })}>
-                  <SelectTrigger className="border-0 text-sm text-white" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}><SelectValue /></SelectTrigger>
-                  <SelectContent style={{ background: 'hsl(220, 50%, 15%)', border: `1px solid ${inputBorder}` }}>
-                    <SelectItem value="coordenador">Coordenador</SelectItem>
-                    <SelectItem value="aluno">Aluno</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Matrícula</label>
-                <Input value={newUser.matricula} onChange={e => setNewUser({ ...newUser, matricula: e.target.value })} className="border-0 text-sm text-white font-mono" style={{ background: inputBg, border: `1px solid ${inputBorder}` }} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Curso</label>
-              <Select value={newUser.curso_id} onValueChange={v => setNewUser({ ...newUser, curso_id: v })}>
-                <SelectTrigger className="border-0 text-sm text-white" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}><SelectValue placeholder="Selecionar curso" /></SelectTrigger>
-                <SelectContent style={{ background: 'hsl(220, 50%, 15%)', border: `1px solid ${inputBorder}` }}>
-                  {cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+        <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
+          <DialogHeader><DialogTitle className="text-white">Novo Usuário</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <Input placeholder="Nome" value={newUser.nome} onChange={e => setNewUser({ ...newUser, nome: e.target.value })} style={{ background: inputBg }} />
+            <Input placeholder="Email" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} style={{ background: inputBg }} />
+            <Input type="password" placeholder="Senha" value={newUser.senha} onChange={e => setNewUser({ ...newUser, senha: e.target.value })} style={{ background: inputBg }} />
+            <Input placeholder="Matrícula" value={newUser.matricula} onChange={e => setNewUser({ ...newUser, matricula: e.target.value })} style={{ background: inputBg }} />
+            <Select value={newUser.perfil} onValueChange={v => setNewUser({ ...newUser, perfil: v })}>
+              <SelectTrigger style={{ background: inputBg }}><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="aluno">Aluno</SelectItem><SelectItem value="coordenador">Coordenador</SelectItem></SelectContent>
+            </Select>
+            <Select value={newUser.curso_id} onValueChange={v => setNewUser({ ...newUser, curso_id: v })}>
+              <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Curso" /></SelectTrigger>
+              <SelectContent>{cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setUserDialog(false)} className="text-xs" style={{ borderColor: cardBorder, color: labelColor, background: 'transparent' }}>Cancelar</Button>
-            <Button onClick={handleCreateUser} className="text-xs border-0" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))`, color: 'white' }}>Cadastrar</Button>
+          <DialogFooter>
+            <Button onClick={handleCreateUser} style={{ background: accentBlue }}>Criar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Rule Dialog ── */}
       <Dialog open={ruleDialog} onOpenChange={setRuleDialog}>
-        <DialogContent className="border-0" style={{ background: 'hsl(220, 50%, 12%)', border: `1px solid ${cardBorder}` }}>
-          <DialogHeader>
-            <DialogTitle className="font-display text-sm tracking-wider uppercase text-white">{editRule.id ? 'Editar Regra' : 'Nova Regra'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Curso *</label>
-              <Select value={editRule.curso_id || ''} onValueChange={v => setEditRule({ ...editRule, curso_id: v })}>
-                <SelectTrigger className="border-0 text-sm text-white" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}><SelectValue placeholder="Selecionar curso" /></SelectTrigger>
-                <SelectContent style={{ background: 'hsl(220, 50%, 15%)', border: `1px solid ${inputBorder}` }}>
-                  {cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Área *</label>
-              <Input value={editRule.area || ''} onChange={e => setEditRule({ ...editRule, area: e.target.value })} className="border-0 text-sm text-white font-mono" style={{ background: inputBg, border: `1px solid ${inputBorder}` }} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Limite de Horas</label>
-                <Input type="number" value={editRule.limite_horas || ''} onChange={e => setEditRule({ ...editRule, limite_horas: Number(e.target.value) })} className="border-0 text-sm text-white font-mono" style={{ background: inputBg, border: `1px solid ${inputBorder}` }} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Exige Comprovante</label>
-                <Select value={editRule.exige_comprovante_str || 'sim'} onValueChange={v => setEditRule({ ...editRule, exige_comprovante_str: v })}>
-                  <SelectTrigger className="border-0 text-sm text-white" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}><SelectValue /></SelectTrigger>
-                  <SelectContent style={{ background: 'hsl(220, 50%, 15%)', border: `1px solid ${inputBorder}` }}>
-                    <SelectItem value="sim">Sim</SelectItem>
-                    <SelectItem value="nao">Não</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+        <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
+          <DialogHeader><DialogTitle className="text-white">Nova Regra</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <Input placeholder="Área" value={editRule.area || ''} onChange={e => setEditRule({ ...editRule, area: e.target.value })} style={{ background: inputBg }} />
+            <Input type="number" placeholder="Limite de Horas" value={editRule.limite_horas || ''} onChange={e => setEditRule({ ...editRule, limite_horas: Number(e.target.value) })} style={{ background: inputBg }} />
+            <Select value={editRule.exige_comprovante_str} onValueChange={v => setEditRule({ ...editRule, exige_comprovante_str: v })}>
+              <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Exige comprovante?" /></SelectTrigger>
+              <SelectContent><SelectItem value="sim">Sim</SelectItem><SelectItem value="nao">Não</SelectItem></SelectContent>
+            </Select>
+            <Select value={editRule.curso_id} onValueChange={v => setEditRule({ ...editRule, curso_id: v })}>
+              <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Curso" /></SelectTrigger>
+              <SelectContent>{cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setRuleDialog(false)} className="text-xs" style={{ borderColor: cardBorder, color: labelColor, background: 'transparent' }}>Cancelar</Button>
-            <Button onClick={handleSaveRule} className="text-xs border-0" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))`, color: 'white' }}>Salvar</Button>
+          <DialogFooter>
+            <Button onClick={handleSaveRule} style={{ background: accentBlue }}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Coord Vínculo Dialog ── */}
       <Dialog open={coordDialog} onOpenChange={setCoordDialog}>
-        <DialogContent className="border-0" style={{ background: 'hsl(220, 50%, 12%)', border: `1px solid ${cardBorder}` }}>
-          <DialogHeader>
-            <DialogTitle className="font-display text-sm tracking-wider uppercase text-white">Novo Vínculo Coordenador–Curso</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Coordenador</label>
-              <Select value={newCoord.usuario_id} onValueChange={v => setNewCoord({ ...newCoord, usuario_id: v })}>
-                <SelectTrigger className="border-0 text-sm text-white" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}><SelectValue placeholder="Selecionar coordenador" /></SelectTrigger>
-                <SelectContent style={{ background: 'hsl(220, 50%, 15%)', border: `1px solid ${inputBorder}` }}>
-                  {coordenadores.map(c => <SelectItem key={c.id} value={c.id}>{c.nome} ({c.email})</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>Curso</label>
-              <Select value={newCoord.curso_id} onValueChange={v => setNewCoord({ ...newCoord, curso_id: v })}>
-                <SelectTrigger className="border-0 text-sm text-white" style={{ background: inputBg, border: `1px solid ${inputBorder}` }}><SelectValue placeholder="Selecionar curso" /></SelectTrigger>
-                <SelectContent style={{ background: 'hsl(220, 50%, 15%)', border: `1px solid ${inputBorder}` }}>
-                  {cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+        <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
+          <DialogHeader><DialogTitle className="text-white">Vincular Coordenador</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <Select value={newCoord.usuario_id} onValueChange={v => setNewCoord({ ...newCoord, usuario_id: v })}>
+              <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Coordenador" /></SelectTrigger>
+              <SelectContent>{coordenadores.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={newCoord.curso_id} onValueChange={v => setNewCoord({ ...newCoord, curso_id: v })}>
+              <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Curso" /></SelectTrigger>
+              <SelectContent>{cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setCoordDialog(false)} className="text-xs" style={{ borderColor: cardBorder, color: labelColor, background: 'transparent' }}>Cancelar</Button>
-            <Button onClick={handleCreateCoordVinculo} className="text-xs border-0" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))`, color: 'white' }}>Vincular</Button>
+          <DialogFooter>
+            <Button onClick={handleCreateCoordVinculo} style={{ background: accentBlue }}>Vincular</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 };

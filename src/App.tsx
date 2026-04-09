@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
-import ProtectedRoute from "@/components/ProtectedRoute"; // Importando o protetor
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
@@ -25,20 +25,26 @@ const App = () => (
           <Routes>
             {/* Rotas Públicas */}
             <Route path="/" element={<Index />} />
+            
+            {/* Login com parâmetro de role */}
             <Route path="/login/:role" element={<Login />} />
+            
+            {/* CORREÇÃO 1: Rota de fallback para /login (redireciona para home) */}
+            <Route path="/login" element={<Navigate to="/" replace />} />
 
-            {/* Rotas Privadas e Protegidas por Perfil */}
+            {/* Rota Protegida: Coordenador */}
             <Route 
-              path="/coordenador" 
+              path="/coordenador/*" 
               element={
-                <ProtectedRoute allowedRoles={['coordenador']}>
+                <ProtectedRoute allowedRoles={['coordenador', 'super_admin']}>
                   <Coordenador />
                 </ProtectedRoute>
               } 
             />
             
+            {/* Rota Protegida: Aluno */}
             <Route 
-              path="/aluno" 
+              path="/aluno/*" 
               element={
                 <ProtectedRoute allowedRoles={['aluno']}>
                   <Aluno />
@@ -46,8 +52,9 @@ const App = () => (
               } 
             />
             
+            {/* Rota Protegida: Admin */}
             <Route 
-              path="/admin" 
+              path="/admin/*" 
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <Admin />
@@ -55,7 +62,7 @@ const App = () => (
               } 
             />
 
-            {/* Catch-all route */}
+            {/* Rota de Erro */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

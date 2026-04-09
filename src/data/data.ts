@@ -1,5 +1,5 @@
 /**
- * TIPOS GLOBAIS E CONFIGURAÇÕES DO SISTEMA (PI)
+ * TIPOS GLOBAIS E CONFIGURAÇÕES DO SISTEMA (PI - Projeto Integrador)
  */
 
 // Tipos de Perfil e Status estritos conforme o manual de rotas
@@ -31,9 +31,17 @@ export interface Submission {
   documento_url?: string;
 }
 
-// Configurações da API para centralizar a URL da Vercel
+/**
+ * CONFIGURAÇÕES DA API
+ * Centraliza os endereços para facilitar a troca entre Localhost e Produção (Vercel)
+ */
 export const API_CONFIG = {
-  BASE_URL: 'https://back-end-banco-five.vercel.app',
+  // Tenta ler do .env, se não existir, usa a URL da Vercel como padrão
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://back-end-banco-five.vercel.app',
+  
+  // Chave de API do Firebase (Web API Key) para renovação de token (Refresh Token)
+  FIREBASE_KEY: import.meta.env.VITE_FIREBASE_KEY || '', 
+
   ENDPOINTS: {
     LOGIN: '/api/auth/login',
     SUBMISSOES: '/api/submissoes',
@@ -47,7 +55,7 @@ export const API_CONFIG = {
 
 /**
  * LABELS PARA INTERFACE
- * Converte os valores técnicos para o que o usuário lê na tela
+ * Converte os valores técnicos para o que o usuário lê na tela (PT-BR)
  */
 export const statusLabels: Record<SubmissionStatus, string> = {
   pendente: 'Pendente',

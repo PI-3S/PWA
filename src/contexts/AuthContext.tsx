@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { API_CONFIG, User } from '@/data/data';
 
-// 1. Definição rigorosa da Interface para o Provider aceitar
 interface AuthContextType {
   user: User | null;
   token: string | null;
@@ -10,7 +9,6 @@ interface AuthContextType {
   signOut: () => void;
 }
 
-// Inicializamos com undefined para garantir que o useAuth seja usado dentro do Provider
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -18,23 +16,86 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('usuario');
-
-    if (savedToken && savedUser) {
-      try {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('usuario');
-      }
+  // Função para renovar o token automaticamente usando o Refresh Token do Firebase
+  const refreshAccessToken = async () => {
+    const savedRefreshToken = localStorage.getItem('refreshToken');
+    
+    if (!savedRefreshToken) {
+      return; 
     }
-    setLoading(false);
+
+    try {
+      // Endpoint oficial do Google para troca de Refresh Token
+      const response = await fetch(
+        `https://securetoken.googleapis.com/v1/token?key=${API_CONFIG.FIREBASE_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: savedRefreshToken,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.id_token) {
+        // Atualiza tanto o estado quanto o armazenamento local com os novos tokens
+        localStorage.setItem('token', data.id_token);
+        localStorage.setItem('authToken', data.id_token); // Compatibilidade com Admin
+        localStorage.setItem('refreshToken', data.refresh_token);
+        setToken(data.id_token);
+        console.log("Sessão renovada automaticamente via Refresh Token.");
+      } else {
+        // Se o refresh falhar (ex: token revogado no console do Firebase), desloga
+        signOut();
+      }
+    } catch (err) {
+      console.error("Erro ao renovar sessão:", err);
+    }
+  };
+
+  useEffect(() => {
+    const loadStorageData = () => {
+      const savedToken = localStorage.getItem('token');
+      const savedUser = localStorage.getItem('usuario');
+
+      if (savedToken && savedUser) {
+        try {
+          setToken(savedToken);
+          setUser(JSON.parse(savedUser));
+        } catch (e) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('usuario');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+          localStorage.removeItem('tokenExpiry');
+        }
+      }
+      setLoading(false);
+    };
+
+    loadStorageData();
   }, []);
 
-  // 2. A função signIn deve retornar exatamente Promise<{ error: string | null }>
+  // Monitor de expiração: A cada 45 minutos verifica e renova o token
+  // O token do Firebase dura 60 minutos, renovamos antes para evitar falhas em requisições
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (token) {
+      interval = setInterval(() => {
+        refreshAccessToken();
+      }, 45 * 60 * 1000); // 45 minutos
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [token]);
+
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LOGIN}`, {
@@ -46,15 +107,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data = await response.json();
 
       if (data.success) {
+        // Salva com as chaves originais
         localStorage.setItem('token', data.token);
+        localStorage.setItem('refreshToken', data.refreshToken);
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
+        
+        // ADICIONADO: Compatibilidade com o Admin
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('userData', JSON.stringify(data.usuario));
+        localStorage.setItem('tokenExpiry', (Date.now() + 24 * 60 * 60 * 1000).toString());
         
         setToken(data.token);
         setUser(data.usuario);
         
         return { error: null };
       } else {
-        return { error: data.mensagem || 'Erro ao realizar login' };
+        return { error: data.error || data.mensagem || 'Erro ao realizar login' };
       }
     } catch (err) {
       return { error: 'Erro de conexão com o servidor' };
@@ -62,16 +130,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = () => {
+    // Remove as chaves originais
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('usuario');
+    
+    // ADICIONADO: Remove as chaves de compatibilidade
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
+    localStorage.removeItem('tokenExpiry');
+    localStorage.removeItem('userEmail');
+    
     setToken(null);
     setUser(null);
     window.location.href = '/login';
   };
 
   return (
-    // Se o erro persistir aqui, verifique se todos os nomes (user, token, loading...) 
-    // existem na interface AuthContextType acima.
     <AuthContext.Provider value={{ user, token, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>

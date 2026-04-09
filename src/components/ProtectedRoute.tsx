@@ -1,40 +1,58 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserPerfil } from '@/data/data';
 
 interface ProtectedRouteProps {
-  children: JSX.Element;
-  allowedRoles?: UserPerfil[]; // Perfis que podem acessar esta rota
+  children: React.ReactNode;
+  allowedRoles?: UserPerfil[];
 }
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
-  const location = useLocation();
 
-  // Se ainda estiver carregando a sessão do localStorage, exibe um loading
+  // 1. Enquanto carrega o token do localStorage, exibe um carregamento
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0b10]">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div>
+      <div className="flex h-screen w-full items-center justify-center bg-gray-900">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
       </div>
     );
   }
 
-  // 1. Verifica se o usuário está logado
+  // 2. Se não estiver logado, redireciona para o login apropriado
   if (!user) {
-    return <Navigate to="/" state={{ from: location }} replace />;
-  }
-
-  // 2. Verifica se o perfil do usuário tem permissão para esta rota específica
-  if (allowedRoles && !allowedRoles.includes(user.perfil)) {
-    // Se for aluno tentando entrar no admin, manda pro dashboard dele
-    const redirectPath = user.perfil === 'aluno' ? '/aluno' : 
-                         user.perfil === 'coordenador' ? '/coordenador' : '/admin';
+    // Tenta recuperar o perfil do localStorage para redirecionar corretamente
+    const savedUserRaw = localStorage.getItem('usuario') || localStorage.getItem('userData');
+    const savedUser = savedUserRaw ? JSON.parse(savedUserRaw) : null;
+    const perfil = savedUser?.perfil;
     
+    // Mapeia o perfil para a rota de login correta
+    const loginRoutes: Record<string, string> = {
+      super_admin: '/login/superadmin',
+      coordenador: '/login/coordenador',
+      aluno: '/login/aluno',
+    };
+    
+    const redirectPath = perfil ? loginRoutes[perfil] : '/';
     return <Navigate to={redirectPath} replace />;
   }
 
-  return children;
+  // 3. Se houver restrição de perfil e o perfil do usuário não estiver na lista
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.perfil)) {
+    // Mapeia para redirecionar para o login correto baseado no perfil atual
+    const loginRoutes: Record<string, string> = {
+      super_admin: '/login/superadmin',
+      coordenador: '/login/coordenador',
+      aluno: '/login/aluno',
+    };
+    
+    // Redireciona para o login apropriado ao perfil do usuário
+    const redirectPath = loginRoutes[user.perfil] || '/';
+    return <Navigate to={redirectPath} replace />;
+  }
+
+  // 4. Se passou em tudo, renderiza a página (children)
+  return <>{children}</>;
 };
 
 export default ProtectedRoute;
