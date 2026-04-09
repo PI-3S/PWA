@@ -26,6 +26,4 @@ env
 *.sln
 *.sw?
 # Optional npm cache directory
-.npm        
-.env
 .env
