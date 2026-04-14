@@ -19,9 +19,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Função para renovar o token automaticamente usando o Refresh Token do Firebase
   const refreshAccessToken = async () => {
     const savedRefreshToken = localStorage.getItem('refreshToken');
-    
+
     if (!savedRefreshToken) {
-      return; 
+      return;
+    }
+
+    if (!API_CONFIG.FIREBASE_KEY) {
+      console.error('FIREBASE_KEY não configurada. Token refresh desabilitado.');
+      return;
     }
 
     try {
@@ -143,7 +148,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     setToken(null);
     setUser(null);
-    window.location.href = '/login';
   };
 
   return (

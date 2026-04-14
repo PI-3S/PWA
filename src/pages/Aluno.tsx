@@ -12,9 +12,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { API_CONFIG } from '@/data/data';
 import logoWhite from '@/assets/logo-white.png';
 
-const API_BASE = 'https://back-end-banco-five.vercel.app';
+const API_BASE = API_CONFIG.BASE_URL;
 
 // Estilos mantidos conforme sua identidade visual
 const panelBg = 'hsl(220, 45%, 11%)';
@@ -80,7 +81,7 @@ const Aluno = () => {
       const url = selectedCurso ? `${API_BASE}/api/dashboard/aluno?curso_id=${selectedCurso}` : `${API_BASE}/api/dashboard/aluno`;
       const res = await fetch(url, { headers: authHeaders() });
       const data = await res.json();
-      setDashboard(data);
+      setDashboard(data.metricas || data);
     } catch { toast.error('Erro ao carregar dashboard.'); }
     setIsLoading(false);
   }, [selectedCurso, authHeaders]);
@@ -139,6 +140,7 @@ const Aluno = () => {
 
   const handleUpload = async () => {
     if (!file) { toast.error('Selecione um arquivo.'); return; }
+    if (file.size > 4 * 1024 * 1024) { toast.error('Arquivo muito grande (máximo 4MB).'); return; }
     setSubmitting(true);
     try {
       const fd = new FormData();
@@ -153,7 +155,10 @@ const Aluno = () => {
         setSubForm({ regra_id: '', carga_horaria_solicitada: '', tipo: '', descricao: '' });
         setFile(null);
         setActiveSection('history');
-      } else { toast.error('Erro ao enviar arquivo.'); }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.mensagem || err.error || 'Erro ao enviar arquivo.');
+      }
     } catch { toast.error('Erro na conexão de rede.'); }
     setSubmitting(false);
   };
@@ -259,7 +264,10 @@ const Aluno = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-xs text-gray-400 uppercase tracking-tighter">Área de Atuação</label>
-                      <Select value={subForm.regra_id} onValueChange={(v) => setSubForm({ ...subForm, regra_id: v })}>
+                      <Select value={subForm.regra_id} onValueChange={(v) => {
+                        const selectedRule = regras.find(r => r.id === v);
+                        setSubForm({ ...subForm, regra_id: v, tipo: selectedRule?.area || '' });
+                      }}>
                         <SelectTrigger className="bg-black/20 border-white/10 text-white"><SelectValue placeholder="Selecione" /></SelectTrigger>
                         <SelectContent className="bg-slate-900 border-white/10 text-white">
                           {regras.map(r => <SelectItem key={r.id} value={r.id}>{r.area}</SelectItem>)}

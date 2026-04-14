@@ -23,30 +23,33 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   if (!user) {
     // Tenta recuperar o perfil do localStorage para redirecionar corretamente
     const savedUserRaw = localStorage.getItem('usuario') || localStorage.getItem('userData');
-    const savedUser = savedUserRaw ? JSON.parse(savedUserRaw) : null;
-    const perfil = savedUser?.perfil;
-    
-    // Mapeia o perfil para a rota de login correta
-    const loginRoutes: Record<string, string> = {
-      super_admin: '/login/superadmin',
-      coordenador: '/login/coordenador',
-      aluno: '/login/aluno',
-    };
-    
-    const redirectPath = perfil ? loginRoutes[perfil] : '/';
-    return <Navigate to={redirectPath} replace />;
+    if (savedUserRaw) {
+      try {
+        const savedUser = JSON.parse(savedUserRaw);
+        const perfil = savedUser?.perfil;
+        const loginRoutes: Record<string, string> = {
+          super_admin: '/login/superadmin',
+          coordenador: '/login/coordenador',
+          aluno: '/login/aluno',
+        };
+        const redirectPath = perfil ? loginRoutes[perfil] : '/';
+        return <Navigate to={redirectPath} replace />;
+      } catch {
+        localStorage.removeItem('usuario');
+        localStorage.removeItem('userData');
+      }
+    }
+    return <Navigate to="/" replace />;
   }
 
   // 3. Se houver restrição de perfil e o perfil do usuário não estiver na lista
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.perfil)) {
-    // Mapeia para redirecionar para o login correto baseado no perfil atual
     const loginRoutes: Record<string, string> = {
       super_admin: '/login/superadmin',
       coordenador: '/login/coordenador',
       aluno: '/login/aluno',
     };
-    
-    // Redireciona para o login apropriado ao perfil do usuário
+
     const redirectPath = loginRoutes[user.perfil] || '/';
     return <Navigate to={redirectPath} replace />;
   }

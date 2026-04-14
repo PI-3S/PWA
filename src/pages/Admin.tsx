@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, Users, FileCheck, ScrollText, Link2,
@@ -13,49 +13,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { API_CONFIG } from '@/data/data';
 import logoWhite from '@/assets/logo-white.png';
 
-const API_BASE = 'https://back-end-banco-five.vercel.app';
-
-const getToken = (): string | null => {
-  // Tenta primeiro 'token' (padrão do AuthContext)
-  // Se não encontrar, tenta 'authToken' (compatibilidade)
-  const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-  const tokenExpiry = localStorage.getItem('tokenExpiry');
-  
-  if (!token) {
-    console.warn('Token não encontrado no localStorage');
-    return null;
-  }
-  
-  // Verificar se o token expirou (apenas se tiver tokenExpiry)
-  if (tokenExpiry) {
-    const expiryTime = parseInt(tokenExpiry);
-    if (Date.now() > expiryTime) {
-      console.warn('Token expirado');
-      localStorage.removeItem('token');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('tokenExpiry');
-      localStorage.removeItem('usuario');
-      localStorage.removeItem('userData');
-      return null;
-    }
-  }
-  
-  return token;
-};
-
-const getUser = () => { 
-  try { 
-    // Tenta primeiro 'usuario' (padrão do AuthContext)
-    // Se não encontrar, tenta 'userData' (compatibilidade)
-    const data = localStorage.getItem('usuario') || localStorage.getItem('userData');
-    if (!data) return { nome: '', perfil: '' };
-    return JSON.parse(data); 
-  } catch { 
-    return { nome: '', perfil: '' }; 
-  } 
-};
+const API_BASE = API_CONFIG.BASE_URL;
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -104,8 +66,8 @@ interface CoordCurso { id: string; usuario_id: string; curso_id: string; coorden
 
 const Admin = () => {
   const navigate = useNavigate();
-  const user = getUser();
-  const userName = user?.nome || localStorage.getItem('userEmail')?.split('@')[0]?.replace(/[0-9]/g, '')?.replace(/[._]/g, ' ')?.trim() || 'Admin';
+  const { user, token, signOut } = useAuth();
+  const userName = user?.nome || 'Admin';
 
   const [section, setSection] = useState('dashboard');
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -114,8 +76,6 @@ const Admin = () => {
   const [submissoes, setSubmissoes] = useState<Submissao[]>([]);
   const [regras, setRegras] = useState<Regra[]>([]);
   const [coordCursos, setCoordCursos] = useState<CoordCurso[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -130,57 +90,25 @@ const Admin = () => {
   const [editCourse, setEditCourse] = useState<Partial<Curso>>({});
   const [userDialog, setUserDialog] = useState(false);
   const [newUser, setNewUser] = useState({ nome: '', email: '', senha: '', perfil: 'aluno', matricula: '', curso_id: '' });
+  const [editUser, setEditUser] = useState<Partial<Usuario>>({});
   const [ruleDialog, setRuleDialog] = useState(false);
   const [editRule, setEditRule] = useState<Partial<Regra & { exige_comprovante_str: string }>>({});
   const [coordDialog, setCoordDialog] = useState(false);
   const [newCoord, setNewCoord] = useState({ usuario_id: '', curso_id: '' });
 
-  useEffect(() => {
-  const checkAuth = () => {
-    const token = getToken();
-    const userData = getUser();
-    
-    console.log('Verificando autenticação:', { 
-      hasToken: !!token, 
-      perfil: userData.perfil,
-      tokenExpiry: localStorage.getItem('tokenExpiry')
-    });
-    
-    if (!token) {
-      console.log('Token não encontrado, redirecionando...');
-      navigate('/login/superadmin');
-      return;
-    }
-
-    // Verificação mais flexível do perfil
-    if (!userData.perfil || (userData.perfil !== 'super_admin' && userData.perfil !== 'admin')) {
-      console.log('Perfil não autorizado:', userData.perfil);
-      toast.error('Acesso restrito ao Super Admin.');
-      navigate('/login/superadmin');
-      return;
-    }
-
-    setIsAuthenticated(true);
-    setAuthChecked(true);
-    
-    // ADICIONE ESTA LINHA: Usa sessionStorage para não repetir o toast
+  // Welcome toast on first mount
+  React.useEffect(() => {
     const welcomed = sessionStorage.getItem('welcomed_admin');
     if (!welcomed) {
       toast.success(`Bem-vindo, ${userName}!`);
       sessionStorage.setItem('welcomed_admin', 'true');
     }
-  };
-
-  const timer = setTimeout(checkAuth, 100);
-  return () => clearTimeout(timer);
-}, [navigate, userName]);
+  }, []);
 
   const apiFetch = useCallback(async (path: string, opts?: RequestInit) => {
-    const token = getToken();
-    
     if (!token) {
       toast.error('Sessão expirada. Faça login novamente.');
-      navigate('/login/superadmin');
+      signOut();
       throw new Error('Token não encontrado');
     }
 
@@ -191,13 +119,10 @@ const Admin = () => {
 
     try {
       const res = await fetch(`${API_BASE}${path}`, { headers, ...opts });
-      
+
       if (res.status === 401 || res.status === 403) {
         toast.error('Sessão expirada. Faça login novamente.');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('tokenExpiry');
-        localStorage.removeItem('userData');
-        navigate('/login/superadmin');
+        signOut();
         throw new Error('Não autorizado');
       }
 
@@ -205,7 +130,7 @@ const Admin = () => {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.mensagem || err.error || `Erro ${res.status}`);
       }
-      
+
       return res.json();
     } catch (error: any) {
       if (error.message !== 'Não autorizado') {
@@ -213,30 +138,30 @@ const Admin = () => {
       }
       throw error;
     }
-  }, [navigate]);
+  }, [token, signOut]);
 
   const loadDashboard = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!token) return;
     try { 
       const d = await apiFetch('/api/dashboard/coordenador'); 
       setMetrics(d.metricas || d); 
     } catch (e: any) { 
       if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar métricas."); 
     }
-  }, [apiFetch, isAuthenticated]);
+  }, [apiFetch]);
 
   const loadCursos = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!token) return;
     try { 
       const d = await apiFetch('/api/cursos'); 
       setCursos(d.cursos || []); 
     } catch (e: any) { 
       if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar cursos."); 
     }
-  }, [apiFetch, isAuthenticated]);
+  }, [apiFetch]);
 
   const loadUsuarios = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!token) return;
     try {
       const params = roleFilter !== 'all' ? `?perfil=${roleFilter}` : '';
       const d = await apiFetch(`/api/usuarios${params}`);
@@ -244,10 +169,10 @@ const Admin = () => {
     } catch (e: any) { 
       if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar usuários."); 
     }
-  }, [apiFetch, roleFilter, isAuthenticated]);
+  }, [apiFetch, roleFilter]);
 
   const loadSubmissoes = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!token) return;
     try { 
       const d = await apiFetch('/api/submissoes'); 
       const subs = d.submissoes || [];
@@ -259,36 +184,36 @@ const Admin = () => {
     } catch (e: any) { 
       if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar submissões."); 
     }
-  }, [apiFetch, isAuthenticated]);
+  }, [apiFetch]);
 
   const loadRegras = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!token) return;
     try { 
       const d = await apiFetch('/api/regras'); 
       setRegras(d.regras || []); 
     } catch (e: any) { 
       if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar regras."); 
     }
-  }, [apiFetch, isAuthenticated]);
+  }, [apiFetch]);
 
   const loadCoordCursos = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!token) return;
     try { 
       const d = await apiFetch('/api/coordenadores-cursos'); 
       setCoordCursos(d.vinculos || []); 
     } catch (e: any) { 
       if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar vínculos."); 
     }
-  }, [apiFetch, isAuthenticated]);
+  }, [apiFetch]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!token) return;
     loadDashboard();
     loadCursos();
-  }, [isAuthenticated, loadDashboard, loadCursos]);
+  }, [loadDashboard, loadCursos]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!token) return;
     
     const loadSectionData = async () => {
       switch (section) {
@@ -301,20 +226,20 @@ const Admin = () => {
       }
     };
     loadSectionData();
-  }, [section, isAuthenticated]);
+  }, [section]);
 
   useEffect(() => { 
-    if (section === 'users' && isAuthenticated) loadUsuarios(); 
+    if (section === 'users') loadUsuarios();
   }, [roleFilter]);
 
   const handleStatusChange = async (id: string, status: 'aprovado' | 'reprovado') => {
     try {
       await apiFetch(`/api/submissoes/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
       toast.success(status === 'aprovado' ? 'Submissão aprovada!' : 'Submissão reprovada.');
-      loadSubmissoes();
-      loadDashboard();
-    } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao atualizar status.'); 
+      // Refresh data sequentially to ensure metrics reflect the new state
+      await Promise.all([loadSubmissoes(), loadDashboard()]);
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao atualizar status.');
     }
   };
 
@@ -385,12 +310,88 @@ const Admin = () => {
   };
 
   const handleRemoveCoordVinculo = async (id: string) => {
+    if (!confirm('Tem certeza que deseja remover este vínculo?')) return;
     try {
       await apiFetch(`/api/coordenadores-cursos/${id}`, { method: 'DELETE' });
       toast.success('Vínculo removido!');
       loadCoordCursos();
-    } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao remover vínculo.'); 
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao remover vínculo.');
+    }
+  };
+
+  const handleDeleteCourse = async (id: string, nome: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o curso "${nome}"?`)) return;
+    try {
+      await apiFetch(`/api/cursos/${id}`, { method: 'DELETE' });
+      toast.success('Curso excluído!');
+      loadCursos();
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao excluir curso.');
+    }
+  };
+
+  const handleDeleteUser = async (id: string, nome: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o usuário "${nome}"?`)) return;
+    try {
+      await apiFetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+      toast.success('Usuário excluído!');
+      loadUsuarios();
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao excluir usuário.');
+    }
+  };
+
+  const handleEditUser = async () => {
+    if (!editUser.id || !editUser.nome || !editUser.email) { toast.error('Preencha os campos obrigatórios.'); return; }
+    try {
+      await apiFetch(`/api/usuarios/${editUser.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          nome: editUser.nome,
+          email: editUser.email,
+          matricula: editUser.matricula,
+          curso_id: editUser.curso_id,
+          perfil: editUser.perfil,
+        }),
+      });
+      toast.success('Usuário atualizado!');
+      setUserDialog(false);
+      setEditUser({});
+      loadUsuarios();
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao atualizar usuário.');
+    }
+  };
+
+  const handleDeleteRule = async (id: string) => {
+    try {
+      await apiFetch(`/api/regras/${id}`, { method: 'DELETE' });
+      toast.success('Regra excluída!');
+      loadRegras();
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao excluir regra.');
+    }
+  };
+
+  const handleEditRule = async () => {
+    if (!editRule.id || !editRule.area || !editRule.curso_id) { toast.error('Preencha os campos obrigatórios.'); return; }
+    try {
+      await apiFetch(`/api/regras/${editRule.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          area: editRule.area,
+          limite_horas: editRule.limite_horas || 60,
+          exige_comprovante: editRule.exige_comprovante_str === 'sim',
+          curso_id: editRule.curso_id,
+        }),
+      });
+      toast.success('Regra atualizada!');
+      setRuleDialog(false);
+      setEditRule({});
+      loadRegras();
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao atualizar regra.');
     }
   };
 
@@ -418,18 +419,10 @@ const Admin = () => {
     }
   };
 
- const handleLogout = () => {
-  // Remove todas as possíveis chaves
-  localStorage.removeItem('token');
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('tokenExpiry');
-  localStorage.removeItem('usuario');
-  localStorage.removeItem('userData');
-  localStorage.removeItem('userEmail');
-  sessionStorage.removeItem('welcomed');
-  navigate('/');
-};
+  const handleLogout = () => {
+    sessionStorage.removeItem('welcomed_admin');
+    signOut();
+  };
 
   const filteredSubmissoes = submissoes.filter(s => {
     if (statusFilter !== 'all' && s.status !== statusFilter) return false;
@@ -463,19 +456,6 @@ const Admin = () => {
     aprovado: { bg: 'hsla(152, 60%, 40%, 0.12)', text: 'hsl(152, 60%, 55%)', border: 'hsla(152, 60%, 40%, 0.3)' },
     reprovado: { bg: 'hsla(0, 72%, 50%, 0.12)', text: 'hsl(0, 72%, 60%)', border: 'hsla(0, 72%, 50%, 0.3)' },
   };
-
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: panelBg }}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-white">Verificando autenticação...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen flex" style={{ background: `linear-gradient(165deg, hsl(220, 50%, 10%) 0%, hsl(225, 45%, 14%) 40%, hsl(220, 45%, 11%) 100%)` }}>
@@ -590,6 +570,9 @@ const Admin = () => {
                           <button onClick={() => { setEditCourse(c); setCourseDialog(true); }} className="mr-2" style={{ color: accentBlue }}>
                             <Pencil className="h-4 w-4" />
                           </button>
+                          <button onClick={() => handleDeleteCourse(c.id, c.nome)} style={{ color: 'hsl(0, 72%, 60%)' }}>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -623,6 +606,7 @@ const Admin = () => {
                       <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Nome/Email</th>
                       <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Perfil</th>
                       <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Curso</th>
+                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -636,6 +620,14 @@ const Admin = () => {
                           <Badge style={{ color: u.perfil === 'coordenador' ? accentOrange : accentBlue }}>{u.perfil}</Badge>
                         </td>
                         <td className="px-5 py-4 text-white">{u.curso_nome || '-'}</td>
+                        <td className="px-5 py-4">
+                          <button onClick={() => { setEditUser(u); setUserDialog(true); }} className="mr-2" style={{ color: accentBlue }}>
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => handleDeleteUser(u.id, u.nome)} style={{ color: 'hsl(0, 72%, 60%)' }}>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -711,9 +703,28 @@ const Admin = () => {
                                     </div>
                                   </div>
                                   <div>
-                                    {loadingCert ? <p className="text-white">Carregando...</p> : certData?.url_arquivo ? (
-                                      <iframe src={certData.url_arquivo} className="w-full h-48" title="Certificado" />
-                                    ) : <p className="text-gray-400">Certificado não disponível</p>}
+                                    {loadingCert ? (
+                                      <p className="text-white">Carregando...</p>
+                                    ) : certData?.url_arquivo ? (
+                                      <div className="space-y-3">
+                                        <a
+                                          href={certData.url_arquivo}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors w-fit"
+                                        >
+                                          <ExternalLink className="h-4 w-4" /> Abrir Certificado
+                                        </a>
+                                        {certData.texto_extraido && (
+                                          <div className="p-3 bg-black/40 rounded-lg border border-white/5">
+                                            <p className="text-[10px] uppercase text-slate-500 mb-1">OCR Extraído</p>
+                                            <p className="text-xs text-slate-400 leading-relaxed max-h-32 overflow-y-auto">{certData.texto_extraido}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="text-gray-400">Certificado não disponível</p>
+                                    )}
                                   </div>
                                 </div>
                               </td>
@@ -739,7 +750,15 @@ const Admin = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {regras.map(r => (
-                  <div key={r.id} className="p-5 rounded-xl" style={{ background: cardBg }}>
+                  <div key={r.id} className="p-5 rounded-xl relative" style={{ background: cardBg }}>
+                    <div className="absolute top-3 right-3 flex gap-1">
+                      <button onClick={() => { setEditRule({ ...r, exige_comprovante_str: r.exige_comprovante ? 'sim' : 'nao' }); setRuleDialog(true); }} style={{ color: accentBlue }}>
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => handleDeleteRule(r.id)} style={{ color: 'hsl(0, 72%, 60%)' }}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                     <h4 className="text-white text-lg mb-2">{r.area}</h4>
                     <p style={{ color: labelColor }}>{r.curso_nome}</p>
                     <p className="mt-2" style={{ color: accentBlue }}>Limite: {r.limite_horas}h</p>
@@ -808,30 +827,31 @@ const Admin = () => {
 
       <Dialog open={userDialog} onOpenChange={setUserDialog}>
         <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
-          <DialogHeader><DialogTitle className="text-white">Novo Usuário</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-white">{editUser.id ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4">
-            <Input placeholder="Nome" value={newUser.nome} onChange={e => setNewUser({ ...newUser, nome: e.target.value })} style={{ background: inputBg }} />
-            <Input placeholder="Email" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} style={{ background: inputBg }} />
-            <Input type="password" placeholder="Senha" value={newUser.senha} onChange={e => setNewUser({ ...newUser, senha: e.target.value })} style={{ background: inputBg }} />
-            <Input placeholder="Matrícula" value={newUser.matricula} onChange={e => setNewUser({ ...newUser, matricula: e.target.value })} style={{ background: inputBg }} />
-            <Select value={newUser.perfil} onValueChange={v => setNewUser({ ...newUser, perfil: v })}>
+            <Input placeholder="Nome" value={editUser.id ? (editUser.nome || '') : newUser.nome} onChange={e => editUser.id ? setEditUser({ ...editUser, nome: e.target.value }) : setNewUser({ ...newUser, nome: e.target.value })} style={{ background: inputBg }} />
+            <Input placeholder="Email" value={editUser.id ? (editUser.email || '') : newUser.email} onChange={e => editUser.id ? setEditUser({ ...editUser, email: e.target.value }) : setNewUser({ ...newUser, email: e.target.value })} style={{ background: inputBg }} />
+            {!editUser.id && <Input type="password" placeholder="Senha" value={newUser.senha} onChange={e => setNewUser({ ...newUser, senha: e.target.value })} style={{ background: inputBg }} />}
+            <Input placeholder="Matrícula" value={editUser.id ? (editUser.matricula || '') : newUser.matricula} onChange={e => editUser.id ? setEditUser({ ...editUser, matricula: e.target.value }) : setNewUser({ ...newUser, matricula: e.target.value })} style={{ background: inputBg }} />
+            <Select value={editUser.id ? (editUser.perfil || 'aluno') : newUser.perfil} onValueChange={v => editUser.id ? setEditUser({ ...editUser, perfil: v }) : setNewUser({ ...newUser, perfil: v })}>
               <SelectTrigger style={{ background: inputBg }}><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="aluno">Aluno</SelectItem><SelectItem value="coordenador">Coordenador</SelectItem></SelectContent>
             </Select>
-            <Select value={newUser.curso_id} onValueChange={v => setNewUser({ ...newUser, curso_id: v })}>
+            <Select value={editUser.id ? (editUser.curso_id || '') : newUser.curso_id} onValueChange={v => editUser.id ? setEditUser({ ...editUser, curso_id: v }) : setNewUser({ ...newUser, curso_id: v })}>
               <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Curso" /></SelectTrigger>
               <SelectContent>{cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <DialogFooter>
-            <Button onClick={handleCreateUser} style={{ background: accentBlue }}>Criar</Button>
+            <Button onClick={() => { setUserDialog(false); setEditUser({}); }} variant="outline">Cancelar</Button>
+            <Button onClick={editUser.id ? handleEditUser : handleCreateUser} style={{ background: accentBlue }}>{editUser.id ? 'Salvar' : 'Criar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={ruleDialog} onOpenChange={setRuleDialog}>
         <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
-          <DialogHeader><DialogTitle className="text-white">Nova Regra</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-white">{editRule.id ? 'Editar Regra' : 'Nova Regra'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <Input placeholder="Área" value={editRule.area || ''} onChange={e => setEditRule({ ...editRule, area: e.target.value })} style={{ background: inputBg }} />
             <Input type="number" placeholder="Limite de Horas" value={editRule.limite_horas || ''} onChange={e => setEditRule({ ...editRule, limite_horas: Number(e.target.value) })} style={{ background: inputBg }} />
@@ -839,13 +859,14 @@ const Admin = () => {
               <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Exige comprovante?" /></SelectTrigger>
               <SelectContent><SelectItem value="sim">Sim</SelectItem><SelectItem value="nao">Não</SelectItem></SelectContent>
             </Select>
-            <Select value={editRule.curso_id} onValueChange={v => setEditRule({ ...editRule, curso_id: v })}>
+            <Select value={editRule.curso_id || ''} onValueChange={v => setEditRule({ ...editRule, curso_id: v })}>
               <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Curso" /></SelectTrigger>
               <SelectContent>{cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <DialogFooter>
-            <Button onClick={handleSaveRule} style={{ background: accentBlue }}>Salvar</Button>
+            <Button onClick={() => { setRuleDialog(false); setEditRule({}); }} variant="outline">Cancelar</Button>
+            <Button onClick={editRule.id ? handleEditRule : handleSaveRule} style={{ background: accentBlue }}>{editRule.id ? 'Salvar' : 'Criar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

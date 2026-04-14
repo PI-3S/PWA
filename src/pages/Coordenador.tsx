@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   LogOut, LayoutDashboard, FileText, Users, UserPlus,
@@ -8,19 +7,11 @@ import {
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/AuthContext';
+import { API_CONFIG } from '@/data/data';
 import logoWhite from '@/assets/logo-white.png';
 
-const API_BASE = 'https://back-end-banco-five.vercel.app';
-
-const getToken = () => localStorage.getItem('authToken') || '';
-const getUser = () => {
-  try { return JSON.parse(localStorage.getItem('userData') || '{}'); } catch { return {}; }
-};
-
-const authHeaders = () => ({
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${getToken()}`,
-});
+const API_BASE = API_CONFIG.BASE_URL;
 
 // Interfaces
 interface DashboardMetrics {
@@ -61,9 +52,13 @@ interface AlunoInfo {
 }
 
 const Coordenador = () => {
-  const navigate = useNavigate();
-  const user = getUser();
-  const userName = user.nome || 'Coordenador';
+  const { user, token, signOut } = useAuth();
+  const userName = user?.nome || 'Coordenador';
+
+  const authHeaders = useCallback(() => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  }), [token]);
 
   const [activeSection, setActiveSection] = useState('dashboard');
   const [loading, setLoading] = useState(false);
@@ -71,7 +66,6 @@ const Coordenador = () => {
 
   // States
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [dashboardTab, setDashboardTab] = useState('todos');
   const [submissoes, setSubmissoes] = useState<Submissao[]>([]);
   const [alunos, setAlunos] = useState<AlunoInfo[]>([]);
   const [cursos, setCursos] = useState<{ id: string; nome: string }[]>([]);
@@ -91,9 +85,9 @@ const Coordenador = () => {
     try {
       const res = await fetch(`${API_BASE}/api/dashboard/coordenador`, { headers: authHeaders() });
       const data = await res.json();
-      if (data.metricas) setMetrics(data.metricas);
+      setMetrics(data.metricas || data);
     } catch { toast.error('Erro ao carregar métricas.'); }
-  }, []);
+  }, [authHeaders]);
 
   const fetchSubmissoes = useCallback(async () => {
     try {
@@ -101,33 +95,32 @@ const Coordenador = () => {
       const data = await res.json();
       setSubmissoes(Array.isArray(data) ? data : data.submissoes || []);
     } catch { toast.error('Erro ao carregar submissões.'); }
-  }, []);
+  }, [authHeaders]);
 
   const fetchAlunos = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/usuarios`, { headers: authHeaders() });
+      const res = await fetch(`${API_BASE}/api/usuarios?perfil=aluno`, { headers: authHeaders() });
       const data = await res.json();
       const list = Array.isArray(data) ? data : data.usuarios || [];
       setAlunos(list.filter((u: any) => u.perfil === 'aluno'));
     } catch { toast.error('Erro ao carregar alunos.'); }
-  }, []);
+  }, [authHeaders]);
 
   const fetchCursos = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/cursos`, { headers: authHeaders() });
       const data = await res.json();
       setCursos(Array.isArray(data) ? data : data.cursos || []);
-    } catch {}
-  }, []);
+    } catch { /* silent */ }
+  }, [authHeaders]);
 
-  const fetchCertificados = async (submissaoId: string) => {
-    if (certificados[submissaoId]) return;
+  const fetchCertificados = useCallback(async (submissaoId: string) => {
     try {
       const res = await fetch(`${API_BASE}/api/certificados?submissao_id=${submissaoId}`, { headers: authHeaders() });
       const data = await res.json();
       setCertificados(prev => ({ ...prev, [submissaoId]: Array.isArray(data) ? data : data.certificados || [] }));
-    } catch {}
-  };
+    } catch { /* silent */ }
+  }, [authHeaders]);
 
   useEffect(() => {
     setLoading(true);
@@ -145,12 +138,12 @@ const Coordenador = () => {
       const res = await fetch(`${API_BASE}/api/submissoes/${id}`, {
         method: 'PATCH',
         headers: authHeaders(),
-        body: JSON.stringify({ status, coordenador_id: user.id }),
+        body: JSON.stringify({ status, coordenador_id: user?.uid }),
       });
       if (res.ok) {
         toast.success(`Submissão ${status === 'aprovado' ? 'aprovada' : 'reprovada'}!`);
         setSubmissoes(prev => prev.map(s => s.id === id ? { ...s, status } : s));
-        fetchDashboard();
+        await Promise.all([fetchDashboard(), fetchSubmissoes()]);
       } else {
         toast.error('Erro ao processar decisão.');
       }
@@ -179,8 +172,7 @@ const Coordenador = () => {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
-    navigate('/');
+    signOut();
   };
 
   // UI Helpers
