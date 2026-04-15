@@ -1,86 +1,200 @@
-# Fluxo de Autenticacao - SGC
+# Rotas Completas do Backend - SGC
 
 **Data:** 2026-04-14
 
-## Visao Geral
+## Base URL
+https://back-end-banco-five.vercel.app
 
-Autenticacao via Firebase Auth (backend customizado), com JWT e refresh token automatico.
+text
 
----
+## 🔐 Autenticação
 
-## Fluxo de Login
+### POST /api/auth/login
+**Body:**
+```json
+{
+  "email": "admin@admin.com",
+  "senha": "admin123"
+}
+Response:
 
-```
-1. Usuario acessa / -> Index.tsx mostra selecao de perfil
-2. Clica em um perfil -> navega para /login/:role
-3. Preenche email/senha -> submit no form
-4. Login.tsx chama AuthContext.signIn(email, password)
-5. signIn faz POST /api/auth/login com { email, senha }
-6. Se sucesso:
-   - Salva token e usuario no localStorage (multiplas chaves)
-   - Atualiza estado do AuthContext (setToken, setUser)
-   - Login.tsx le localStorage para validar perfil
-   - Se perfil bate com a rota -> toast.success + navigate para o painel
-   - Se nao -> limpa localStorage + toast.error
-7. ProtectedRoute verifica o perfil e libera/bloqueia acesso
-```
-
-## Endpoints de Auth
-
-### Login
-```
-POST /api/auth/login
-Body: { "email": "string", "senha": "string" }
-Response: {
+json
+{
   "success": true,
   "token": "eyJhbGci...",
   "refreshToken": "...",
-  "usuario": { "uid", "nome", "email", "perfil", "curso_id" }
+  "usuario": {
+    "uid": "xxx",
+    "nome": "Admin",
+    "email": "admin@admin.com",
+    "perfil": "super_admin",
+    "curso_id": null
+  }
 }
-```
+👥 Usuários
+Método	Rota	Perfil
+GET	/api/usuarios	super_admin, coordenador
+POST	/api/usuarios	super_admin, coordenador
+PATCH	/api/usuarios/:id	super_admin, coordenador
+DELETE	/api/usuarios/:id	super_admin, coordenador
+POST /api/usuarios
+json
+{
+  "nome": "João Silva",
+  "email": "joao@email.com",
+  "senha": "123456",
+  "perfil": "aluno",
+  "matricula": "2024001",
+  "curso_id": "abc123"
+}
+DELETE /api/usuarios/:id
+Proteções:
 
-### Refresh Token
-```
-POST https://securetoken.googleapis.com/v1/token?key={FIREBASE_KEY}
-Body: grant_type=refresh_token&refresh_token={savedRefreshToken}
-Response: { "id_token": "...", "refresh_token": "..." }
-```
+Não exclui último super_admin
 
-## Chaves localStorage
+Remove vínculos automaticamente
 
-| Chave | Conteudo | Setado Por | Lido Por |
-|-------|----------|-----------|----------|
-| `token` | JWT token | AuthContext.signIn | AuthContext, ProtectedRoute |
-| `authToken` | JWT token (compatibilidade) | AuthContext.signIn | Admin, Aluno, Coordenador, api.ts |
-| `refreshToken` | Refresh token Firebase | AuthContext.signIn | AuthContext.refreshAccessToken |
-| `usuario` | User JSON | AuthContext.signIn | AuthContext, ProtectedRoute, Admin |
-| `userData` | User JSON (compatibilidade) | AuthContext.signIn | Admin |
-| `tokenExpiry` | Timestamp (Date.now + 24h) | AuthContext.signIn | Admin |
-| `userEmail` | Email do usuario | NUNCA SETADO | Admin (fallback) |
+📚 Cursos
+Método	Rota	Perfil
+GET	/api/cursos	Todos
+POST	/api/cursos	super_admin
+PATCH	/api/cursos/:id	super_admin
+DELETE	/api/cursos/:id	super_admin
+PATCH /api/cursos/:id
+json
+{
+  "nome": "Novo Nome",
+  "carga_horaria_minima": 250
+}
+DELETE /api/cursos/:id
+Proteção: Não exclui se houver alunos ou coordenadores vinculados
 
-> **Nota:** `userEmail` nunca e setado pelo fluxo atual. O Admin tenta ler mas sempre retorna vazio.
+📏 Regras de Atividades
+Método	Rota	Perfil
+GET	/api/regras	Todos
+POST	/api/regras	super_admin
+PATCH	/api/regras/:id	super_admin
+DELETE	/api/regras/:id	super_admin
+POST /api/regras
+json
+{
+  "area": "Extensão",
+  "limite_horas": 60,
+  "exige_comprovante": true,
+  "curso_id": "abc123"
+}
+DELETE /api/regras/:id
+Proteção: Não exclui se houver submissões vinculadas
 
-## Refresh Token Automatico
+📤 Submissões
+Método	Rota	Perfil
+GET	/api/submissoes	Todos
+POST	/api/submissoes	aluno
+PATCH	/api/submissoes/:id	super_admin, coordenador
+POST /api/submissoes
+json
+{
+  "regra_id": "regra123",
+  "tipo": "Curso Online",
+  "descricao": "Curso de React",
+  "carga_horaria_solicitada": 40
+}
+PATCH /api/submissoes/:id
+json
+{
+  "status": "aprovado"  // ou "reprovado"
+}
+📜 Certificados
+Método	Rota	Perfil
+GET	/api/certificados	Todos
+POST	/api/certificados	aluno
+POST /api/certificados
+Content-Type: multipart/form-data
 
-- **Intervalo:** a cada 45 minutos
-- **Endpoint:** Google securetoken API
-- **Firebase Key:** `VITE_FIREBASE_KEY` do `.env`
-- **Fallback:** se falhar, faz signOut
+text
+submissao_id: "sub123"
+arquivo: [FILE]
+🔗 Vínculos Coordenador-Curso
+Método	Rota	Perfil
+GET	/api/coordenadores-cursos	super_admin
+POST	/api/coordenadores-cursos	super_admin
+DELETE	/api/coordenadores-cursos/:id	super_admin
+🎓 Vínculos Aluno-Curso
+Método	Rota	Perfil
+GET	/api/alunos-cursos	Todos
+POST	/api/alunos-cursos	super_admin, coordenador
+DELETE	/api/alunos-cursos/:id	super_admin, coordenador
+📊 Dashboard
+GET /api/dashboard/coordenador
+Perfil: super_admin, coordenador
+Response:
 
-## Perfis
+json
+{
+  "success": true,
+  "metricas": {
+    "total_submissoes": 25,
+    "pendentes": 10,
+    "aprovadas": 12,
+    "reprovadas": 3,
+    "por_area": [...],
+    "por_curso": [...]
+  }
+}
+GET /api/dashboard/aluno
+Perfil: aluno
+Response:
 
-| Perfil | Valor no DB | Rota de Login | Rota do Painel |
-|--------|------------|--------------|---------------|
-| Super Admin | `super_admin` | `/login/superadmin` | `/admin/*` |
-| Coordenador | `coordenador` | `/login/coordenador` | `/coordenador/*` |
-| Aluno | `aluno` | `/login/aluno` | `/aluno/*` |
+json
+{
+  "success": true,
+  "metricas": {
+    "total_submissoes": 5,
+    "pendentes": 2,
+    "aprovadas": 2,
+    "reprovadas": 1,
+    "total_horas_aprovadas": 80,
+    "carga_horaria_minima": 200,
+    "progresso_percentual": 40
+  }
+}
+⚙️ Configurações (🆕)
+Método	Rota	Perfil
+GET	/api/configuracoes/:id	super_admin
+POST	/api/configuracoes/:id	super_admin
+POST	/api/configuracoes/test-email	super_admin
+GET /api/configuracoes/email_config
+Response:
 
-## Logout
+json
+{
+  "success": true,
+  "config": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "user": "email@gmail.com",
+    "pass": "****",
+    "from": "SGC <email@gmail.com>",
+    "ativo": true
+  }
+}
+POST /api/configuracoes/email_config
+Body: (mesmo formato acima)
 
-Limpa todas as chaves localStorage e redireciona:
-- AuthContext.signOut -> `window.location.href = '/'` (page reload)
-- Admin handleLogout -> `navigate('/')` (sem reload)
-- Aluno signOut -> `navigate('/')` (via AuthContext)
-- Coordenador handleLogout -> `localStorage.clear()` + `navigate('/')`
-
-> **Inconsistencia:** cada pagina faz logout de forma diferente.
+POST /api/configuracoes/test-email
+json
+{
+  "to": "teste@email.com"
+}
+📋 Coleções do Firestore
+Coleção	Descrição
+usuarios	Usuários do sistema
+cursos	Cursos cadastrados
+regras_atividade	Regras por curso
+submissoes	Submissões dos alunos
+atividades_complementares	Dados das atividades
+certificados	URLs e OCR
+coordenadores_cursos	Vínculos coord-curso
+alunos_cursos	Vínculos aluno-curso
+configuracoes	🆕 Configurações do sistema
+logs	Registro de ações

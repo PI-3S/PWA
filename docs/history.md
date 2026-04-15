@@ -39,12 +39,6 @@
 - ✅ Incompatibilidade de chaves localStorage entre AuthContext e Admin
 - ✅ Toast de boas-vindas conflitando entre áreas
 
-**Commits Relacionados:**
-- `fix: auth compatibility between contexts`
-- `feat: add multi-key localStorage support`
-- `fix: redirect delay after login`
-- `refactor: improve ProtectedRoute validation`
-
 ---
 
 #### 08/04/2026 - Implementação do Super Admin
@@ -59,11 +53,6 @@
 6. Gestão de regras de atividades
 7. Vínculos coordenador-curso
 
-**Desafios Técnicos:**
-- Preview de PDFs em diferentes navegadores
-- Tratamento de CORS para imagens de certificados
-- Sincronização de estado após ações assíncronas
-
 ---
 
 #### 07/04/2026 - Estrutura Base e Autenticação
@@ -75,41 +64,70 @@
 - React Router v6
 - Context API para autenticação
 
-**Features Implementadas:**
-1. AuthContext com login/logout
-2. Refresh token automático
-3. Páginas de login por role
-4. ProtectedRoute básico
+---
+
+### Fase 2: Correções e Estabilização (14/04/2026) 🆕
+
+#### 14/04/2026 - Revisão Completa do Admin e Backend
+**Objetivo:** Corrigir CRUD, Dashboard e implementar configurações dinâmicas
+
+**Alterações Realizadas:**
+
+**BACKEND:**
+1. **Cursos** - Adicionados PATCH e DELETE
+2. **Usuários** - Adicionado DELETE com proteções
+3. **Regras** - Adicionados PATCH e DELETE
+4. **Coordenadores-Cursos** - Adicionado DELETE
+5. **Dashboard** - Corrigido para Super Admin ver todos os cursos
+6. **Configurações** - Nova rota completa para gerenciar email e sistema
+7. **Email** - Serviço refatorado para buscar config do Firestore
+
+**FRONTEND (Admin.tsx):**
+1. **Ordem dos Hooks** - Corrigido `useCallback` antes do `useEffect`
+2. **Mapeamento Robusto** - Múltiplos fallbacks para campos da API
+3. **Gerador de Senha** - Senha forte de 12 caracteres com símbolos
+4. **Modal de Confirmação** - Mostra credenciais + botão copiar + enviar email
+5. **Configurações** - Nova seção para gerenciar email e sistema
+6. **Dashboard** - Agora carrega dados corretamente
+
+**Problemas Resolvidos:**
+- ✅ Dashboard vazio para Super Admin
+- ✅ CRUD incompleto (faltavam PATCH/DELETE)
+- ✅ Configurações hardcoded no .env
+- ✅ Admin não sabia senha ao criar usuário
+- ✅ Erro "Cannot access before initialization"
+- ✅ Campos vazios na tabela de validação
 
 ---
 
-### 📊 Estatísticas do Desenvolvimento
+### 📊 Estatísticas do Desenvolvimento (ATUALIZADO)
 
 | Métrica | Valor |
 |---------|-------|
-| Total de Commits | 45+ |
-| Linhas de Código | ~8,500 |
-| Componentes Criados | 35+ |
-| Bugs Resolvidos | 12 |
-| Features Implementadas | 25+ |
+| Total de Commits | 60+ |
+| Linhas de Código | ~12,000 |
+| Componentes Criados | 40+ |
+| Bugs Resolvidos | 25+ |
+| Features Implementadas | 35+ |
+| Endpoints API | 30+ |
 
 ---
 
-## 🎯 Próximos Marcos
+## 🎯 Próximos Marcos (ATUALIZADO)
 
-### Fase 2: Área do Coordenador (Abril 2026)
-- [ ] Dashboard do coordenador
-- [ ] Validação de submissões pendentes
-- [ ] Gestão de alunos do curso
-- [ ] Relatórios por curso
+### Fase 3: Revisão do Coordenador (Abril 2026) 🆕
+- [ ] Aplicar mesmas correções do Admin (ordem hooks, mapeamento)
+- [ ] Testar dashboard do coordenador
+- [ ] Testar aprovação/reprovação de submissões
+- [ ] Testar cadastro de alunos
 
-### Fase 3: Área do Aluno (Maio 2026)
-- [ ] Dashboard do aluno
-- [ ] Nova submissão com upload
-- [ ] Acompanhamento de status
-- [ ] Histórico de submissões
+### Fase 4: Revisão do Aluno (Abril 2026) 🆕
+- [ ] Aplicar mesmas correções do Admin
+- [ ] Testar dashboard do aluno
+- [ ] Testar envio de submissões
+- [ ] Testar upload de certificados
 
-### Fase 4: Melhorias e Otimizações (Junho 2026)
+### Fase 5: Melhorias e Otimizações (Maio 2026)
 - [ ] Testes automatizados
 - [ ] PWA para mobile
 - [ ] Notificações em tempo real
@@ -117,21 +135,18 @@
 
 ---
 
-## 🤝 Contribuidores
-
-- **Desenvolvedor Principal:** [Seu Nome]
-- **Revisor de Código:** Claude (Anthropic)
-- **QA:** [A definir]
-
----
-
-## 📝 Lições Aprendidas
+## 📝 Lições Aprendidas (ATUALIZADO)
 
 1. **Compatibilidade de localStorage:** Sempre usar um padrão único ou implementar fallbacks
 2. **Redirecionamentos:** Adicionar pequenos delays evita race conditions
 3. **Preview de documentos:** Iframe é simples mas tem limitações de CORS
 4. **Gestão de estado:** Context API é suficiente para auth, React Query para dados
 5. **TypeScript:** Tipagem forte evita bugs em tempo de execução
+6. **🆕 Ordem dos Hooks:** `useCallback` sempre ANTES do `useEffect` que o utiliza
+7. **🆕 Configurações Dinâmicas:** Firestore é melhor que .env para produção
+8. **🆕 CRUD Completo:** Todo recurso precisa de POST, GET, PATCH, DELETE
+9. **🆕 Proteção de Exclusão:** Sempre verificar vínculos antes de excluir
+10. **🆕 Mapeamento Robusto:** API pode retornar campos com nomes diferentes
 
 ---
 
@@ -144,5 +159,5 @@
 
 ---
 
-**Última atualização:** 09/04/2026 15:30
-**Versão
+**Última atualização:** 14/04/2026 23:45
+**Versão:** 2.0

@@ -1,111 +1,107 @@
+## 📁 5. `DEV-GUIDE.md` (ATUALIZADO)
+
+```markdown
 # Guia de Desenvolvimento - SGC
 
-**Data:** 2026-04-14
+**Data:** 2026-04-14 (ATUALIZADO)
 
 ## Como Rodar o Projeto
 
 ```bash
-# Instalar dependencias
-bun install
+bun install          # Instalar dependencias
+bun dev              # http://localhost:8080
+bun build            # Build producao
+bun lint             # Verificar lint
+🆕 Padrões de Código (ATUALIZADO)
+Ordem dos Hooks (IMPORTANTE!)
+typescript
+// ✅ CORRETO - useCallback ANTES do useEffect
+const loadData = useCallback(async () => { ... }, [apiFetch]);
 
-# Desenvolvimento
-bun dev          # http://localhost:8080
+useEffect(() => {
+  loadData(); // Funciona!
+}, [loadData]);
 
-# Build
-bun build        # Producao
-bun build:dev    # Desenvolvimento
+// ❌ ERRADO - Causa "Cannot access before initialization"
+useEffect(() => {
+  loadData(); // Erro!
+}, [loadData]);
+const loadData = useCallback(async () => { ... }, [apiFetch]);
+Mapeamento Robusto de Campos da API
+typescript
+// ✅ SEMPRE use múltiplos fallbacks
+const mapped = data.map(item => ({
+  aluno_nome: item.aluno_nome || item.nome_aluno || item.aluno?.nome || '—',
+  curso_nome: item.curso_nome || item.nome_curso || item.curso?.nome || '—',
+  horas: item.horas_solicitadas || item.carga_horaria_solicitada || 0,
+}));
+CRUD Completo
+Todo recurso deve ter:
 
-# Lint
-bun lint
+POST /api/recurso - Criar
 
-# Testes
-bun test         # Vitest run
-bun test:watch   # Vitest watch
-```
+GET /api/recurso - Listar
 
-## Estrutura de Pastas
+PATCH /api/recurso/:id - Atualizar
 
-Consultar `./docs/architecture.md` para o mapa completo.
+DELETE /api/recurso/:id - Excluir (com verificação de vínculos)
 
-## Padroes de Codigo
+Proteção ao Excluir
+javascript
+// ✅ SEMPRE verificar vínculos antes do DELETE
+const vinculos = await db.collection('tabela_filha')
+  .where('campo_pai_id', '==', id)
+  .limit(1)
+  .get();
 
-### Import Path Alias
-```typescript
-// Use @/ para imports do src
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-```
+if (!vinculos.empty) {
+  return res.status(400).json({ error: 'Existem registros vinculados' });
+}
+Configurações Dinâmicas
+javascript
+// ✅ Usar Firestore para configurações editáveis
+const config = await db.collection('configuracoes').doc('email_config').get();
 
-### Autenticacao
-- **SEMPRE** usar `useAuth()` do `AuthContext` para acessar `user`, `token`, `signOut`
-- **NAO** ler `localStorage` diretamente para auth - usar o contexto
-- Headers de API: `Authorization: Bearer ${token}`
+// ❌ NÃO usar .env para coisas que mudam em produção
+const emailUser = process.env.EMAIL_USER; // Ruim para produção
+Gerador de Senha Segura
+typescript
+const generateSecurePassword = () => {
+  const length = 12;
+  const charset = {
+    uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    lowercase: 'abcdefghijklmnopqrstuvwxyz',
+    numbers: '0123456789',
+    symbols: '!@#$%&*'
+  };
+  // Garante pelo menos um de cada tipo
+  // ... retorna senha forte
+};
+🆕 Credenciais de Teste
+Perfil	Email	Senha
+Super Admin	admin@admin.com	admin123
+Coordenador	coordenador@email.com	123456
+Aluno	joao@email.com	123456
+🆕 Scripts Úteis
+scripts/setup-firestore.js
+Cria coleções de configuração no Firestore.
 
-### Chamadas de API
-- **Preferir:** criar hooks ou servicos centralizados
-- **Evitar:** `fetch` inline espalhado pelos componentes
-- Tratar erros sempre com feedback visual (toast)
+scripts/seed-dashboard.js
+Gera dados de teste para o dashboard.
 
-### Toasts
-```typescript
-import { toast } from 'sonner';
-toast.success('Sucesso!');
-toast.error('Erro!');
-toast.warning('Atencao!');
-```
+Checklist Antes de Commit (ATUALIZADO)
+bun lint passa
 
-### Classes CSS
-- Usar classes Tailwind com `cn()` de `@/lib/utils`
-- Cores usam padrao HSL inline via `style={{}}`
-- Classes customizadas (`glass-card`, `futuristic-bg`) podem nao estar definidas
+Login funciona nos 3 perfis
 
-## Credenciais de Teste
+CRUD completo (POST, GET, PATCH, DELETE)
 
-| Perfil | Email | Senha |
-|--------|-------|-------|
-| Super Admin | admin@admin.com | admin123 |
-| Coordenador | coordenador@email.com | 123456 |
-| Aluno | joao@email.com | 123456 |
+Ordem dos hooks está correta
 
-## Perfis de Acesso
+Mapeamento de campos usa fallbacks
 
-| Perfil | Valor | Painel |
-|--------|-------|--------|
-| Super Admin | `super_admin` | `/admin` |
-| Coordenador | `coordenador` | `/coordenador` |
-| Aluno | `aluno` | `/aluno` |
+Dashboard mostra dados para Super Admin
 
-## Adicionar Nova Rota
+Configurações vêm do Firestore
 
-1. Criar pagina em `src/pages/`
-2. Registrar em `src/App.tsx` com `ProtectedRoute` se necessario
-3. Definir `allowedRoles` conforme perfil
-
-## Adicionar Novo Endpoint de API
-
-1. Consultar `./docs/apiguide.md` para o formato do endpoint
-2. Se reusavel, adicionar em `src/services/api.ts`
-3. Tratar erros com toast
-
-## Environment Variables
-
-| Variavel | Descricao | Obrigatorio |
-|----------|-----------|------------|
-| `VITE_API_BASE_URL` | URL da API | Nao (fallback para Vercel) |
-| `VITE_FIREBASE_KEY` | Firebase Web API Key | Sim (para refresh token) |
-
-## Coisas para Nao Fazer
-
-- **NAO** adicionar novas leituras diretas de `localStorage` para auth
-- **NAO** criar novas chaves localStorage sem documentar
-- **NAO** duplicar logica de HTTP entre componentes
-- **NAO** usar status alem de `pendente`, `aprovado`, `reprovado`
-- **NAO** assumir que campos da API sao consistentes (verificar sempre)
-
-## Checklist Antes de Commit
-
-- [ ] `bun lint` passa sem erros
-- [ ] Login funciona nos 3 perfis
-- [ ] ProtectedRoute bloqueia acesso sem auth
-- [ ] Logout limpa sessao corretamente
-- [ ] API calls funcionam com token valido
+Exclusões verificam vínculos

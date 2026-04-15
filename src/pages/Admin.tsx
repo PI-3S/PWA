@@ -4,7 +4,7 @@ import {
   LayoutDashboard, BookOpen, Users, FileCheck, ScrollText, Link2,
   LogOut, Search, Plus, Pencil, Trash2, Check, X, ChevronRight, ChevronDown, ChevronUp,
   GraduationCap, Clock, Award, AlertTriangle, Filter,
-  ShieldCheck, UserPlus, Bell, ExternalLink
+  ShieldCheck, UserPlus, Bell, ExternalLink, Settings, Save, Mail, Globe, Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { API_CONFIG } from '@/data/data';
 import logoWhite from '@/assets/logo-white.png';
 
+
 const API_BASE = API_CONFIG.BASE_URL;
 
 const navItems = [
@@ -26,6 +27,7 @@ const navItems = [
   { id: 'validation', label: 'Validação', icon: FileCheck },
   { id: 'rules', label: 'Regras de Atividades', icon: ScrollText },
   { id: 'coordinators', label: 'Coordenadores', icon: Link2 },
+  { id: 'settings', label: 'Configurações', icon: Settings }, // 🆕 ADICIONE ESTA LINHA
 ];
 
 const panelBg = 'hsl(220, 45%, 11%)';
@@ -36,6 +38,27 @@ const inputBorder = 'hsla(200, 80%, 50%, 0.15)';
 const labelColor = 'hsl(220, 20%, 55%)';
 const accentBlue = 'hsl(210, 80%, 55%)';
 const accentOrange = 'hsl(30, 95%, 55%)';
+
+
+
+
+// ─── FIX: Estilo padrão para todos os inputs (texto branco) ───────────────────
+const inputStyle = {
+  background: inputBg,
+  color: 'white',
+  border: `1px solid ${inputBorder}`,
+};
+
+
+
+// ─── FIX: Estilo padrão para toasts (fundo escuro + texto branco) ─────────────
+const toastStyle = {
+  background: 'hsl(220, 45%, 14%)',
+  color: 'white',
+  border: `1px solid hsla(200, 60%, 40%, 0.3)`,
+};
+const toastSuccess = (msg: string) => toast.success(msg, { style: toastStyle });
+const toastError   = (msg: string) => toast.error(msg,   { style: { ...toastStyle, border: '1px solid hsla(0,70%,50%,0.4)' } });
 
 interface DashboardMetrics {
   total_submissoes: number;
@@ -64,10 +87,35 @@ interface Submissao {
 interface Regra { id: string; area: string; limite_horas: number; exige_comprovante: boolean; curso_id: string; curso_nome?: string; }
 interface CoordCurso { id: string; usuario_id: string; curso_id: string; coordenador_nome?: string; coordenador_email?: string; curso_nome?: string; }
 
+
+
 const Admin = () => {
   const navigate = useNavigate();
   const { user, token, signOut } = useAuth();
   const userName = user?.nome || 'Admin';
+
+const [emailConfig, setEmailConfig] = useState({
+  host: '',
+  port: 587,
+  secure: false,
+  user: '',
+  pass: '',
+  from: '',
+  ativo: true
+});
+
+const [sistemaConfig, setSistemaConfig] = useState({
+  nome_sistema: '',
+  instituicao: '',
+  logo_url: '',
+  frontend_url: '',
+  cor_primaria: '',
+  cor_secundaria: ''
+});
+
+const [loadingConfig, setLoadingConfig] = useState(false);
+const [testingEmail, setTestingEmail] = useState(false);
+
 
   const [section, setSection] = useState('dashboard');
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -96,18 +144,48 @@ const Admin = () => {
   const [coordDialog, setCoordDialog] = useState(false);
   const [newCoord, setNewCoord] = useState({ usuario_id: '', curso_id: '' });
 
-  // Welcome toast on first mount
+const generateSecurePassword = () => {
+  const length = 12;
+  const charset = {
+    uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    lowercase: 'abcdefghijklmnopqrstuvwxyz',
+    numbers: '0123456789',
+    symbols: '!@#$%&*'
+  };
+  
+  let password = '';
+  const allChars = charset.uppercase + charset.lowercase + charset.numbers + charset.symbols;
+  
+  // Garante pelo menos um de cada tipo
+  password += charset.uppercase.charAt(Math.floor(Math.random() * charset.uppercase.length));
+  password += charset.lowercase.charAt(Math.floor(Math.random() * charset.lowercase.length));
+  password += charset.numbers.charAt(Math.floor(Math.random() * charset.numbers.length));
+  password += charset.symbols.charAt(Math.floor(Math.random() * charset.symbols.length));
+  
+  // Completa o resto da senha
+  for (let i = password.length; i < length; i++) {
+    password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+  }
+  
+  // Embaralha a senha
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+};
+
+// Estado para o modal de confirmação
+const [createdUserData, setCreatedUserData] = useState<{nome: string, email: string, senha: string} | null>(null);
+
+  // ─── FIX: Welcome toast com estilo correto ────────────────────────────────
   React.useEffect(() => {
     const welcomed = sessionStorage.getItem('welcomed_admin');
     if (!welcomed) {
-      toast.success(`Bem-vindo, ${userName}!`);
+      toastSuccess(`Bem-vindo, ${userName}!`);
       sessionStorage.setItem('welcomed_admin', 'true');
     }
   }, []);
 
   const apiFetch = useCallback(async (path: string, opts?: RequestInit) => {
     if (!token) {
-      toast.error('Sessão expirada. Faça login novamente.');
+      toastError('Sessão expirada. Faça login novamente.');
       signOut();
       throw new Error('Token não encontrado');
     }
@@ -121,7 +199,7 @@ const Admin = () => {
       const res = await fetch(`${API_BASE}${path}`, { headers, ...opts });
 
       if (res.status === 401 || res.status === 403) {
-        toast.error('Sessão expirada. Faça login novamente.');
+        toastError('Sessão expirada. Faça login novamente.');
         signOut();
         throw new Error('Não autorizado');
       }
@@ -146,7 +224,7 @@ const Admin = () => {
       const d = await apiFetch('/api/dashboard/coordenador'); 
       setMetrics(d.metricas || d); 
     } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar métricas."); 
+      if (e.message !== 'Não autorizado') toastError(e.message || "Erro ao carregar métricas."); 
     }
   }, [apiFetch]);
 
@@ -156,35 +234,104 @@ const Admin = () => {
       const d = await apiFetch('/api/cursos'); 
       setCursos(d.cursos || []); 
     } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar cursos."); 
+      if (e.message !== 'Não autorizado') toastError(e.message || "Erro ao carregar cursos."); 
     }
   }, [apiFetch]);
+
+  const loadEmailConfig = useCallback(async () => {
+  try {
+    const doc = await apiFetch('/api/configuracoes/email_config');
+    if (doc.config) {
+      setEmailConfig(doc.config);
+    }
+  } catch (e) {
+    console.error('Erro ao carregar config de email:', e);
+  }
+}, [apiFetch]);
+
+const loadSistemaConfig = useCallback(async () => {
+  try {
+    const doc = await apiFetch('/api/configuracoes/sistema_config');
+    if (doc.config) {
+      setSistemaConfig(doc.config);
+    }
+  } catch (e) {
+    console.error('Erro ao carregar config do sistema:', e);
+  }
+}, [apiFetch]);
 
   const loadUsuarios = useCallback(async () => {
-    if (!token) return;
-    try {
-      const params = roleFilter !== 'all' ? `?perfil=${roleFilter}` : '';
-      const d = await apiFetch(`/api/usuarios${params}`);
-      setUsuarios(d.usuarios || []);
-    } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar usuários."); 
-    }
-  }, [apiFetch, roleFilter]);
+  if (!token) return;
+  try {
+    const params = roleFilter !== 'all' ? `?perfil=${roleFilter}` : '';
+    const [dUsuarios, dCursos] = await Promise.all([
+      apiFetch(`/api/usuarios${params}`),
+      apiFetch('/api/cursos'),
+    ]);
+    const cursosMap: Record<string, string> = {};
+    (dCursos.cursos || []).forEach((c: Curso) => { cursosMap[c.id] = c.nome; });
+
+    const usuarios = (dUsuarios.usuarios || []).map((u: any) => ({
+      ...u,
+      curso_nome: u.curso_nome || (u.curso_id ? cursosMap[u.curso_id] : undefined),
+    }));
+    setUsuarios(usuarios);
+    setCursos(dCursos.cursos || []);
+  } catch (e: any) {
+    if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao carregar usuários.');
+  }
+}, [apiFetch, roleFilter]);
 
   const loadSubmissoes = useCallback(async () => {
-    if (!token) return;
-    try { 
-      const d = await apiFetch('/api/submissoes'); 
-      const subs = d.submissoes || [];
-      const mappedSubs = subs.map((s: any) => ({
-        ...s,
-        horas_solicitadas: s.carga_horaria_solicitada || s.horas_solicitadas
-      }));
-      setSubmissoes(mappedSubs);
-    } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar submissões."); 
-    }
-  }, [apiFetch]);
+  if (!token) return;
+  try {
+    const d = await apiFetch('/api/submissoes');
+    const raw = d.submissoes || d.data || [];
+
+    // log para você ver o que a API realmente retorna
+    if (raw.length > 0) {
+  console.log('[submissoes] exemplo de item:', raw[0]);
+  console.log('[submissoes] TODAS as chaves:', Object.keys(raw[0])); // ← Adicione esta linha
+}
+
+    const mapped = raw.map((s: any) => ({
+  ...s,
+  aluno_nome:
+    s.aluno_nome ||
+    s.nome_aluno ||
+    s.aluno?.nome ||
+    s.usuario?.nome ||        // ← Adicionado
+    s.usuario_nome ||
+    s.estudante_nome ||
+    s.student_name ||          // ← Adicionado
+    '—',
+  curso_nome:
+    s.curso_nome ||
+    s.nome_curso ||
+    s.curso?.nome ||
+    s.course_name ||           // ← Adicionado
+    '—',
+  area:
+    s.area ||
+    s.area_atividade ||
+    s.atividade_area ||        // ← Adicionado
+    s.categoria ||
+    s.tipo ||
+    s.regra?.area ||           // ← Adicionado
+    '—',
+  horas_solicitadas:
+    s.horas_solicitadas ||
+    s.carga_horaria_solicitada ||
+    s.carga_horaria ||
+    s.horas ||
+    0,
+  status: s.status || 'pendente',
+}));
+    setSubmissoes(mapped);
+  } catch (e: any) {
+    if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao carregar submissões.');
+  }
+}, [apiFetch]);
 
   const loadRegras = useCallback(async () => {
     if (!token) return;
@@ -192,17 +339,35 @@ const Admin = () => {
       const d = await apiFetch('/api/regras'); 
       setRegras(d.regras || []); 
     } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar regras."); 
+      if (e.message !== 'Não autorizado') toastError(e.message || "Erro ao carregar regras."); 
     }
   }, [apiFetch]);
 
   const loadCoordCursos = useCallback(async () => {
     if (!token) return;
-    try { 
-      const d = await apiFetch('/api/coordenadores-cursos'); 
-      setCoordCursos(d.vinculos || []); 
-    } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || "Erro ao carregar vínculos."); 
+    try {
+      const [dVinculos, dUsuarios, dCursos] = await Promise.all([
+        apiFetch('/api/coordenadores-cursos'),
+        apiFetch('/api/usuarios'),
+        apiFetch('/api/cursos'),
+      ]);
+
+      const vinculos = (dVinculos.vinculos || []).map((v: any) => {
+        const usuario = (dUsuarios.usuarios || []).find((u: any) => u.id === v.usuario_id);
+        const curso = (dCursos.cursos || []).find((c: any) => c.id === v.curso_id);
+        return {
+          ...v,
+          coordenador_nome: usuario?.nome || v.usuario_id,
+          coordenador_email: usuario?.email || '',
+          curso_nome: curso?.nome || v.curso_id,
+        };
+      });
+
+      setCoordCursos(vinculos);
+      setUsuarios(dUsuarios.usuarios || []);
+      setCursos(dCursos.cursos || []);
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toastError(e.message || "Erro ao carregar vínculos.");
     }
   }, [apiFetch]);
 
@@ -213,20 +378,21 @@ const Admin = () => {
   }, [loadDashboard, loadCursos]);
 
   useEffect(() => {
-    if (!token) return;
-    
-    const loadSectionData = async () => {
-      switch (section) {
-        case 'users': await loadUsuarios(); break;
-        case 'validation': await loadSubmissoes(); break;
-        case 'rules': await Promise.all([loadRegras(), loadCursos()]); break;
-        case 'coordinators': await Promise.all([loadCoordCursos(), loadUsuarios(), loadCursos()]); break;
-        case 'courses': await loadCursos(); break;
-        case 'dashboard': await Promise.all([loadDashboard(), loadSubmissoes()]); break;
-      }
-    };
-    loadSectionData();
-  }, [section]);
+  if (!token) return;
+  
+  const loadSectionData = async () => {
+    switch (section) {
+      case 'users': await loadUsuarios(); break;
+      case 'validation': await loadSubmissoes(); break;
+      case 'rules': await Promise.all([loadRegras(), loadCursos()]); break;
+      case 'coordinators': await loadCoordCursos(); break;
+      case 'courses': await loadCursos(); break;
+      case 'dashboard': await Promise.all([loadDashboard(), loadSubmissoes()]); break;
+      case 'settings': await Promise.all([loadEmailConfig(), loadSistemaConfig()]); break;
+    }
+  };
+  loadSectionData();
+}, [section, token, loadUsuarios, loadSubmissoes, loadRegras, loadCursos, loadCoordCursos, loadDashboard, loadEmailConfig, loadSistemaConfig]);
 
   useEffect(() => { 
     if (section === 'users') loadUsuarios();
@@ -235,77 +401,154 @@ const Admin = () => {
   const handleStatusChange = async (id: string, status: 'aprovado' | 'reprovado') => {
     try {
       await apiFetch(`/api/submissoes/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
-      toast.success(status === 'aprovado' ? 'Submissão aprovada!' : 'Submissão reprovada.');
-      // Refresh data sequentially to ensure metrics reflect the new state
+      toastSuccess(status === 'aprovado' ? 'Submissão aprovada!' : 'Submissão reprovada.');
       await Promise.all([loadSubmissoes(), loadDashboard()]);
     } catch (e: any) {
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao atualizar status.');
+      if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao atualizar status.');
     }
   };
 
-  const handleSaveCourse = async () => {
-    if (!editCourse.nome) { toast.error('Nome obrigatório.'); return; }
-    try {
-      const body = { nome: editCourse.nome, carga_horaria_minima: editCourse.carga_horaria_minima || 200 };
-      if (editCourse.id) {
-        await apiFetch(`/api/cursos/${editCourse.id}`, { method: 'PUT', body: JSON.stringify(body) });
-        toast.success('Curso atualizado!');
-      } else {
-        await apiFetch('/api/cursos', { method: 'POST', body: JSON.stringify(body) });
-        toast.success('Curso cadastrado!');
-      }
-      loadCursos();
-      setCourseDialog(false);
-      setEditCourse({});
-    } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao salvar curso.'); 
-    }
+
+
+const handleSaveCourse = async () => {
+  if (!editCourse.nome?.trim()) { 
+    toastError('Nome obrigatório.'); 
+    return; 
+  }
+  
+  const body = {
+    nome: editCourse.nome.trim(),
+    carga_horaria_minima: Number(editCourse.carga_horaria_minima) || 200,
   };
+
+  try {
+    if (editCourse.id) {
+      await apiFetch(`/api/cursos/${editCourse.id}`, { 
+        method: 'PATCH', 
+        body: JSON.stringify(body) 
+      });
+      toastSuccess('Curso atualizado!');
+    } else {
+      await apiFetch('/api/cursos', { 
+        method: 'POST', 
+        body: JSON.stringify(body) 
+      });
+      toastSuccess('Curso cadastrado!');
+    }
+    
+    await loadCursos();
+    setCourseDialog(false);
+    setEditCourse({});
+  } catch (e: any) {
+    toastError(e.message || 'Erro ao salvar curso.');
+  }
+};
 
   const handleCreateUser = async () => {
-    if (!newUser.nome || !newUser.email || !newUser.senha) { toast.error('Preencha os campos obrigatórios.'); return; }
-    try {
-      await apiFetch('/api/usuarios', { method: 'POST', body: JSON.stringify(newUser) });
-      toast.success('Usuário cadastrado!');
-      setUserDialog(false);
-      setNewUser({ nome: '', email: '', senha: '', perfil: 'aluno', matricula: '', curso_id: '' });
-      loadUsuarios();
-    } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao cadastrar usuário.'); 
+  // Validações
+  if (!newUser.nome?.trim()) { 
+    toastError('Nome é obrigatório.'); 
+    return; 
+  }
+  if (!newUser.email?.trim()) { 
+    toastError('Email é obrigatório.'); 
+    return; 
+  }
+  if (!newUser.email.includes('@')) { 
+    toastError('Email inválido.'); 
+    return; 
+  }
+  if (!newUser.senha) { 
+    toastError('Senha é obrigatória.'); 
+    return; 
+  }
+  if (newUser.senha.length < 6) { 
+    toastError('A senha deve ter pelo menos 6 caracteres.'); 
+    return; 
+  }
+  
+  try {
+    const response = await apiFetch('/api/usuarios', { 
+      method: 'POST', 
+      body: JSON.stringify({
+        nome: newUser.nome.trim(),
+        email: newUser.email.trim().toLowerCase(),
+        senha: newUser.senha,
+        perfil: newUser.perfil,
+        matricula: newUser.matricula?.trim() || null,
+        curso_id: newUser.curso_id || null
+      }) 
+    });
+    
+    // Mostra os dados no modal APENAS como backup
+    setCreatedUserData({
+      nome: newUser.nome.trim(),
+      email: newUser.email.trim().toLowerCase(),
+      senha: newUser.senha
+    });
+    
+    toastSuccess(`Usuário criado! Credenciais enviadas para ${newUser.email}`);
+    
+    setUserDialog(false);
+    setNewUser({ 
+      nome: '', 
+      email: '', 
+      senha: '', 
+      perfil: 'aluno', 
+      matricula: '', 
+      curso_id: '' 
+    });
+    
+    await loadUsuarios();
+    
+  } catch (e: any) { 
+    if (e.message !== 'Não autorizado') {
+      if (e.message.includes('email')) {
+        toastError('Este email já está em uso.');
+      } else {
+        toastError(e.message || 'Erro ao cadastrar usuário.');
+      }
     }
-  };
+  }
+};
+
 
   const handleSaveRule = async () => {
-    if (!editRule.area || !editRule.curso_id) { toast.error('Preencha os campos obrigatórios.'); return; }
-    try {
-      await apiFetch('/api/regras', {
-        method: 'POST',
-        body: JSON.stringify({
-          area: editRule.area,
-          limite_horas: editRule.limite_horas || 60,
-          exige_comprovante: editRule.exige_comprovante_str === 'sim',
-          curso_id: editRule.curso_id
-        })
-      });
-      toast.success('Regra salva!');
-      setRuleDialog(false);
-      setEditRule({});
-      loadRegras();
-    } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao salvar regra.'); 
-    }
-  };
+  if (!editRule.area || !editRule.curso_id) { 
+    toastError('Preencha os campos obrigatórios.'); 
+    return; 
+  }
+  
+  try {
+    await apiFetch('/api/regras', {
+      method: 'POST',
+      body: JSON.stringify({
+        area: editRule.area,
+        limite_horas: editRule.limite_horas || 60,
+        exige_comprovante: editRule.exige_comprovante_str === 'sim',
+        curso_id: editRule.curso_id
+      })
+    });
+    toastSuccess('Regra criada com sucesso!');
+    setRuleDialog(false);
+    setEditRule({});
+    loadRegras();
+  } catch (e: any) { 
+    if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao salvar regra.'); 
+  }
+};
+
 
   const handleCreateCoordVinculo = async () => {
-    if (!newCoord.usuario_id || !newCoord.curso_id) { toast.error('Selecione coordenador e curso.'); return; }
+    if (!newCoord.usuario_id || !newCoord.curso_id) { toastError('Selecione coordenador e curso.'); return; }
     try {
       await apiFetch('/api/coordenadores-cursos', { method: 'POST', body: JSON.stringify(newCoord) });
-      toast.success('Vínculo criado!');
+      toastSuccess('Vínculo criado!');
       setCoordDialog(false);
       setNewCoord({ usuario_id: '', curso_id: '' });
       loadCoordCursos();
     } catch (e: any) { 
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao criar vínculo.'); 
+      if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao criar vínculo.'); 
     }
   };
 
@@ -313,87 +556,160 @@ const Admin = () => {
     if (!confirm('Tem certeza que deseja remover este vínculo?')) return;
     try {
       await apiFetch(`/api/coordenadores-cursos/${id}`, { method: 'DELETE' });
-      toast.success('Vínculo removido!');
+      toastSuccess('Vínculo removido!');
       loadCoordCursos();
     } catch (e: any) {
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao remover vínculo.');
+      if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao remover vínculo.');
     }
   };
 
   const handleDeleteCourse = async (id: string, nome: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o curso "${nome}"?`)) return;
-    try {
-      await apiFetch(`/api/cursos/${id}`, { method: 'DELETE' });
-      toast.success('Curso excluído!');
-      loadCursos();
-    } catch (e: any) {
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao excluir curso.');
-    }
-  };
+  if (!confirm(`Excluir o curso "${nome}"?`)) return;
+  
+  try {
+    await apiFetch(`/api/cursos/${id}`, { method: 'DELETE' });
+    toastSuccess('Curso excluído!');
+    await loadCursos();
+  } catch (e: any) {
+    toastError(e.message || 'Erro ao excluir curso.');
+  }
+};
 
   const handleDeleteUser = async (id: string, nome: string) => {
     if (!confirm(`Tem certeza que deseja excluir o usuário "${nome}"?`)) return;
     try {
       await apiFetch(`/api/usuarios/${id}`, { method: 'DELETE' });
-      toast.success('Usuário excluído!');
+      toastSuccess('Usuário excluído!');
       loadUsuarios();
     } catch (e: any) {
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao excluir usuário.');
+      if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao excluir usuário.');
     }
   };
 
-  const handleEditUser = async () => {
-    if (!editUser.id || !editUser.nome || !editUser.email) { toast.error('Preencha os campos obrigatórios.'); return; }
-    try {
-      await apiFetch(`/api/usuarios/${editUser.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          nome: editUser.nome,
-          email: editUser.email,
-          matricula: editUser.matricula,
-          curso_id: editUser.curso_id,
-          perfil: editUser.perfil,
-        }),
-      });
-      toast.success('Usuário atualizado!');
-      setUserDialog(false);
-      setEditUser({});
-      loadUsuarios();
-    } catch (e: any) {
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao atualizar usuário.');
-    }
+  // 🆕 Carregar configurações
+
+
+// 🆕 Salvar configuração de email
+const saveEmailConfig = async () => {
+  setLoadingConfig(true);
+  try {
+    await apiFetch('/api/configuracoes/email_config', {
+      method: 'POST',
+      body: JSON.stringify(emailConfig)
+    });
+    toastSuccess('Configurações de email salvas!');
+  } catch (e: any) {
+    toastError(e.message || 'Erro ao salvar configurações.');
+  } finally {
+    setLoadingConfig(false);
+  }
+};
+
+// 🆕 Salvar configuração do sistema
+const saveSistemaConfig = async () => {
+  setLoadingConfig(true);
+  try {
+    await apiFetch('/api/configuracoes/sistema_config', {
+      method: 'POST',
+      body: JSON.stringify(sistemaConfig)
+    });
+    toastSuccess('Configurações do sistema salvas!');
+  } catch (e: any) {
+    toastError(e.message || 'Erro ao salvar configurações.');
+  } finally {
+    setLoadingConfig(false);
+  }
+};
+
+// 🆕 Testar envio de email
+const testEmailConfig = async () => {
+  if (!emailConfig.user) {
+    toastError('Configure o email remetente primeiro.');
+    return;
+  }
+  
+  setTestingEmail(true);
+  try {
+    await apiFetch('/api/configuracoes/test-email', {
+      method: 'POST',
+      body: JSON.stringify({ to: emailConfig.user })
+    });
+    toastSuccess('Email de teste enviado! Verifique sua caixa de entrada.');
+  } catch (e: any) {
+    toastError(e.message || 'Erro ao enviar email de teste.');
+  } finally {
+    setTestingEmail(false);
+  }
+};
+
+  // ─── handleEditUser: tenta PATCH, fallback para PUT se vier 404/405 ───────────
+const handleEditUser = async () => {
+  if (!editUser.id || !editUser.nome || !editUser.email) {
+    toastError('Preencha os campos obrigatórios.');
+    return;
+  }
+  const body = {
+    nome: editUser.nome,
+    email: editUser.email,
+    matricula: editUser.matricula || '',
+    curso_id: editUser.curso_id || '',
+    perfil: editUser.perfil,
   };
+  try {
+    // tenta PATCH primeiro; se não existir, usa PUT
+    try {
+      await apiFetch(`/api/usuarios/${editUser.id}`, { method: 'PATCH', body: JSON.stringify(body) });
+    } catch (patchErr: any) {
+      if (patchErr.message?.includes('404') || patchErr.message?.includes('405')) {
+        await apiFetch(`/api/usuarios/${editUser.id}`, { method: 'PUT', body: JSON.stringify(body) });
+      } else {
+        throw patchErr;
+      }
+    }
+    toastSuccess('Usuário atualizado!');
+    setUserDialog(false);
+    setEditUser({});
+    await loadUsuarios();
+  } catch (e: any) {
+    if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao atualizar usuário.');
+  }
+};
 
   const handleDeleteRule = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta regra?')) return;
     try {
       await apiFetch(`/api/regras/${id}`, { method: 'DELETE' });
-      toast.success('Regra excluída!');
+      toastSuccess('Regra excluída!');
       loadRegras();
     } catch (e: any) {
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao excluir regra.');
+      if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao excluir regra.');
     }
   };
 
   const handleEditRule = async () => {
-    if (!editRule.id || !editRule.area || !editRule.curso_id) { toast.error('Preencha os campos obrigatórios.'); return; }
-    try {
-      await apiFetch(`/api/regras/${editRule.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          area: editRule.area,
-          limite_horas: editRule.limite_horas || 60,
-          exige_comprovante: editRule.exige_comprovante_str === 'sim',
-          curso_id: editRule.curso_id,
-        }),
-      });
-      toast.success('Regra atualizada!');
-      setRuleDialog(false);
-      setEditRule({});
-      loadRegras();
-    } catch (e: any) {
-      if (e.message !== 'Não autorizado') toast.error(e.message || 'Erro ao atualizar regra.');
-    }
-  };
+  if (!editRule.id || !editRule.area || !editRule.curso_id) { 
+    toastError('Preencha os campos obrigatórios.'); 
+    return; 
+  }
+  
+  try {
+    await apiFetch(`/api/regras/${editRule.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        area: editRule.area,
+        limite_horas: editRule.limite_horas || 60,
+        exige_comprovante: editRule.exige_comprovante_str === 'sim',
+        curso_id: editRule.curso_id,
+      }),
+    });
+    toastSuccess('Regra atualizada com sucesso!');
+    setRuleDialog(false);
+    setEditRule({});
+    loadRegras();
+  } catch (e: any) {
+    if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao atualizar regra.');
+  }
+};
 
   const loadCertificado = async (submissaoId: string) => {
     setLoadingCert(true);
@@ -419,6 +735,7 @@ const Admin = () => {
     }
   };
 
+  // ─── FIX: usa 'welcomed_admin' corretamente ───────────────────────────────
   const handleLogout = () => {
     sessionStorage.removeItem('welcomed_admin');
     signOut();
@@ -473,7 +790,13 @@ const Admin = () => {
           {navItems.map(item => (
             <button
               key={item.id}
-              onClick={() => { setSection(item.id); setSearchTerm(''); setStatusFilter('all'); setCursoFilter('all'); }}
+              onClick={() => {
+                setSection(item.id);
+                setSearchTerm('');
+                setStatusFilter('all');
+                setCursoFilter('all');
+                setRoleFilter('all');
+              }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200"
               style={section === item.id ? { background: `${accentBlue}18`, border: `1px solid ${accentBlue}33`, color: 'white' } : { color: labelColor }}
             >
@@ -545,50 +868,57 @@ const Admin = () => {
 
           {/* COURSES */}
           {section === 'courses' && (
-            <>
-              <div className="flex justify-between">
-                <h2 className="text-white text-xl">Gestão de Cursos</h2>
-                <Button onClick={() => { setEditCourse({}); setCourseDialog(true); }} style={{ background: accentBlue }}>
-                  <Plus className="h-4 w-4 mr-2" /> Novo Curso
-                </Button>
-              </div>
-              <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
-                <table className="w-full">
-                  <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
-                    <tr>
-                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Nome</th>
-                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Carga Horária</th>
-                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cursos.map(c => (
-                      <tr key={c.id} className="border-b" style={{ borderColor: cardBorder }}>
-                        <td className="px-5 py-4 text-white">{c.nome}</td>
-                        <td className="px-5 py-4" style={{ color: accentBlue }}>{c.carga_horaria_minima}h</td>
-                        <td className="px-5 py-4">
-                          <button onClick={() => { setEditCourse(c); setCourseDialog(true); }} className="mr-2" style={{ color: accentBlue }}>
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => handleDeleteCourse(c.id, c.nome)} style={{ color: 'hsl(0, 72%, 60%)' }}>
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+  <>
+    <div className="flex justify-between">
+      <h2 className="text-white text-xl">Gestão de Cursos</h2>
+      <Button onClick={() => { setEditCourse({}); setCourseDialog(true); }} style={{ background: accentBlue }}>
+        <Plus className="h-4 w-4 mr-2" /> Novo Curso
+      </Button>
+    </div>
+    <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
+      <table className="w-full">
+        <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
+          <tr>
+            <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Nome</th>
+            <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Carga Horária</th>
+            <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cursos.map(c => (
+            <tr key={c.id} className="border-b" style={{ borderColor: cardBorder }}>
+              <td className="px-5 py-4 text-white">{c.nome}</td>
+              <td className="px-5 py-4" style={{ color: accentBlue }}>{c.carga_horaria_minima}h</td>
+              <td className="px-5 py-4">
+                {/* ✅ CORRETO: Botões de Editar e Excluir curso */}
+                <button onClick={() => { setEditCourse(c); setCourseDialog(true); }} className="mr-2" style={{ color: accentBlue }}>
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button onClick={() => handleDeleteCourse(c.id, c.nome)} style={{ color: 'hsl(0, 72%, 60%)' }}>
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </>
+)}
 
           {/* USERS */}
           {section === 'users' && (
             <div className="space-y-4">
               <div className="flex gap-2">
-                <Input placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ background: inputBg }} />
+                {/* FIX: Input de busca com texto branco */}
+                <Input
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  style={inputStyle}
+                />
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger style={{ background: inputBg, width: 150 }}><SelectValue placeholder="Perfil" /></SelectTrigger>
+                  <SelectTrigger style={{ ...inputStyle, width: 150 }}><SelectValue placeholder="Perfil" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="aluno">Alunos</SelectItem>
@@ -637,107 +967,120 @@ const Admin = () => {
           )}
 
           {/* VALIDATION */}
-          {section === 'validation' && (
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger style={{ background: inputBg, width: 150 }}><SelectValue placeholder="Status" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="pendente">Pendentes</SelectItem>
-                    <SelectItem value="aprovado">Aprovadas</SelectItem>
-                    <SelectItem value="reprovado">Reprovadas</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={cursoFilter} onValueChange={setCursoFilter}>
-                  <SelectTrigger style={{ background: inputBg, width: 200 }}><SelectValue placeholder="Curso" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {cursos.map(c => <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
-                <table className="w-full">
-                  <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
-                    <tr>
-                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Aluno</th>
-                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Curso</th>
-                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Área</th>
-                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Horas</th>
-                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Status</th>
-                      <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredSubmissoes.map(sub => {
-                      const sc = statusColors[sub.status] || statusColors.pendente;
-                      const isExpanded = expandedId === sub.id;
-                      return (
-                        <React.Fragment key={sub.id}>
-                          <tr className="border-b" style={{ borderColor: cardBorder }}>
-                            <td className="px-5 py-4 text-white">{sub.aluno_nome}</td>
-                            <td className="px-5 py-4" style={{ color: labelColor }}>{sub.curso_nome}</td>
-                            <td className="px-5 py-4" style={{ color: labelColor }}>{sub.area}</td>
-                            <td className="px-5 py-4" style={{ color: accentBlue }}>{sub.horas_solicitadas || sub.carga_horaria_solicitada || 0}h</td>
-                            <td className="px-5 py-4"><Badge style={{ background: sc.bg, color: sc.text }}>{sub.status}</Badge></td>
-                            <td className="px-5 py-4">
-                              <button onClick={() => toggleExpand(sub.id)} style={{ color: accentBlue }}>
-                                {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                              </button>
-                            </td>
-                          </tr>
-                          {isExpanded && (
-                            <tr>
-                              <td colSpan={6} className="px-8 py-6 bg-black/20">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <p className="text-white mb-2">Descrição: {sub.descricao || '-'}</p>
-                                    <div className="flex gap-2">
-                                      <Button onClick={() => handleStatusChange(sub.id, 'reprovado')} style={{ background: 'hsla(0, 72%, 50%, 0.2)', color: 'hsl(0, 72%, 60%)' }}>
-                                        <X className="h-4 w-4 mr-2" /> Reprovar
-                                      </Button>
-                                      <Button onClick={() => handleStatusChange(sub.id, 'aprovado')} style={{ background: 'hsla(152, 60%, 40%, 0.2)', color: 'hsl(152, 60%, 55%)' }}>
-                                        <Check className="h-4 w-4 mr-2" /> Aprovar
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    {loadingCert ? (
-                                      <p className="text-white">Carregando...</p>
-                                    ) : certData?.url_arquivo ? (
-                                      <div className="space-y-3">
-                                        <a
-                                          href={certData.url_arquivo}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors w-fit"
-                                        >
-                                          <ExternalLink className="h-4 w-4" /> Abrir Certificado
-                                        </a>
-                                        {certData.texto_extraido && (
-                                          <div className="p-3 bg-black/40 rounded-lg border border-white/5">
-                                            <p className="text-[10px] uppercase text-slate-500 mb-1">OCR Extraído</p>
-                                            <p className="text-xs text-slate-400 leading-relaxed max-h-32 overflow-y-auto">{certData.texto_extraido}</p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <p className="text-gray-400">Certificado não disponível</p>
-                                    )}
-                                  </div>
+{section === 'validation' && (
+  <div className="space-y-4">
+    <div className="flex gap-2">
+      <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <SelectTrigger style={{ ...inputStyle, width: 150 }}><SelectValue placeholder="Status" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todos</SelectItem>
+          <SelectItem value="pendente">Pendentes</SelectItem>
+          <SelectItem value="aprovado">Aprovadas</SelectItem>
+          <SelectItem value="reprovado">Reprovadas</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select value={cursoFilter} onValueChange={setCursoFilter}>
+        <SelectTrigger style={{ ...inputStyle, width: 200 }}><SelectValue placeholder="Curso" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todos</SelectItem>
+          {cursos.map(c => <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+    <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
+      <table className="w-full">
+        <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
+          <tr>
+            <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Aluno</th>
+            <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Curso</th>
+            <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Área</th>
+            <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Horas</th>
+            <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Status</th>
+            <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredSubmissoes.map(sub => {
+            const sc = statusColors[sub.status] || statusColors.pendente;
+            const isExpanded = expandedId === sub.id;
+            return (
+              <React.Fragment key={sub.id}>
+                <tr className="border-b" style={{ borderColor: cardBorder }}>
+                  <td className="px-5 py-4 text-white">{sub.aluno_nome}</td>
+                  <td className="px-5 py-4" style={{ color: labelColor }}>{sub.curso_nome}</td>
+                  <td className="px-5 py-4" style={{ color: labelColor }}>{sub.area}</td>
+                  <td className="px-5 py-4" style={{ color: accentBlue }}>{sub.horas_solicitadas || sub.carga_horaria_solicitada || 0}h</td>
+                  <td className="px-5 py-4"><Badge style={{ background: sc.bg, color: sc.text }}>{sub.status}</Badge></td>
+                  <td className="px-5 py-4">
+                    <button 
+                      onClick={() => toggleExpand(sub.id)} 
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-110"
+                      style={{ 
+                        background: isExpanded ? `${accentBlue}22` : 'transparent',
+                        border: `1px solid ${isExpanded ? accentBlue : 'transparent'}`,
+                        color: isExpanded ? accentBlue : labelColor 
+                      }}
+                      title={isExpanded ? "Recolher detalhes" : "Expandir detalhes"}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="h-5 w-5" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5" />
+                      )}
+                    </button>
+                  </td>
+                </tr>
+                {isExpanded && (
+                  <tr>
+                    <td colSpan={6} className="px-8 py-6 bg-black/20">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-white mb-2">Descrição: {sub.descricao || '-'}</p>
+                          <div className="flex gap-2">
+                            <Button onClick={() => handleStatusChange(sub.id, 'reprovado')} style={{ background: 'hsla(0, 72%, 50%, 0.2)', color: 'hsl(0, 72%, 60%)' }}>
+                              <X className="h-4 w-4 mr-2" /> Reprovar
+                            </Button>
+                            <Button onClick={() => handleStatusChange(sub.id, 'aprovado')} style={{ background: 'hsla(152, 60%, 40%, 0.2)', color: 'hsl(152, 60%, 55%)' }}>
+                              <Check className="h-4 w-4 mr-2" /> Aprovar
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          {loadingCert ? (
+                            <p className="text-white">Carregando certificado...</p>
+                          ) : certData?.url_arquivo ? (
+                            <div className="space-y-3">
+                              <a
+                                href={certData.url_arquivo}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors w-fit"
+                              >
+                                <ExternalLink className="h-4 w-4" /> Abrir Certificado
+                              </a>
+                              {certData.texto_extraido && (
+                                <div className="p-3 bg-black/40 rounded-lg border border-white/5">
+                                  <p className="text-[10px] uppercase text-slate-500 mb-1">OCR Extraído</p>
+                                  <p className="text-xs text-slate-400 leading-relaxed max-h-32 overflow-y-auto">{certData.texto_extraido}</p>
                                 </div>
-                              </td>
-                            </tr>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-gray-400">Certificado não disponível</p>
                           )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
 
           {/* RULES */}
           {section === 'rules' && (
@@ -750,19 +1093,34 @@ const Admin = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {regras.map(r => (
-                  <div key={r.id} className="p-5 rounded-xl relative" style={{ background: cardBg }}>
+                  <div key={r.id} className="p-5 rounded-xl relative" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
                     <div className="absolute top-3 right-3 flex gap-1">
-                      <button onClick={() => { setEditRule({ ...r, exige_comprovante_str: r.exige_comprovante ? 'sim' : 'nao' }); setRuleDialog(true); }} style={{ color: accentBlue }}>
+                      {/* FIX: Botão editar passa exige_comprovante_str corretamente */}
+                      <button
+                        onClick={() => {
+                          setEditRule({
+                            ...r,
+                            exige_comprovante_str: r.exige_comprovante ? 'sim' : 'nao',
+                          });
+                          setRuleDialog(true);
+                        }}
+                        style={{ color: accentBlue }}
+                        title="Editar regra"
+                      >
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <button onClick={() => handleDeleteRule(r.id)} style={{ color: 'hsl(0, 72%, 60%)' }}>
+                      <button onClick={() => handleDeleteRule(r.id)} style={{ color: 'hsl(0, 72%, 60%)' }} title="Excluir regra">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-                    <h4 className="text-white text-lg mb-2">{r.area}</h4>
-                    <p style={{ color: labelColor }}>{r.curso_nome}</p>
-                    <p className="mt-2" style={{ color: accentBlue }}>Limite: {r.limite_horas}h</p>
-                    <Badge style={{ color: r.exige_comprovante ? 'hsl(152, 60%, 55%)' : labelColor }}>
+                    <h4 className="text-white text-lg mb-1 pr-16">{r.area}</h4>
+                    <p className="text-xs mb-2" style={{ color: labelColor }}>{r.curso_nome}</p>
+                    <p className="text-sm mb-2" style={{ color: accentBlue }}>Limite: {r.limite_horas}h</p>
+                    <Badge style={{
+                      background: r.exige_comprovante ? 'hsla(152, 60%, 40%, 0.15)' : 'hsla(220, 40%, 30%, 0.4)',
+                      color: r.exige_comprovante ? 'hsl(152, 60%, 55%)' : labelColor,
+                      border: `1px solid ${r.exige_comprovante ? 'hsla(152,60%,40%,0.3)' : 'transparent'}`,
+                    }}>
                       {r.exige_comprovante ? 'Exige comprovante' : 'Não exige'}
                     </Badge>
                   </div>
@@ -806,17 +1164,209 @@ const Admin = () => {
               </div>
             </div>
           )}
-
+            {/* SETTINGS */}
+{section === 'settings' && (
+  <div className="space-y-6">
+    <h2 className="text-white text-xl flex items-center gap-2">
+      <Settings className="h-5 w-5" />
+      Configurações do Sistema
+    </h2>
+    
+    {/* Configurações de Email */}
+    <div className="rounded-xl p-6" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+      <h3 className="text-white text-lg mb-4 flex items-center gap-2">
+        <Mail className="h-5 w-5" style={{ color: accentBlue }} />
+        Configurações de Email
+      </h3>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Servidor SMTP</label>
+          <Input 
+            placeholder="smtp.gmail.com" 
+            value={emailConfig.host}
+            onChange={e => setEmailConfig({...emailConfig, host: e.target.value})}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Porta</label>
+          <Input 
+            type="number"
+            placeholder="587" 
+            value={emailConfig.port}
+            onChange={e => setEmailConfig({...emailConfig, port: Number(e.target.value)})}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Email Remetente</label>
+          <Input 
+            placeholder="senac@exemplo.com" 
+            value={emailConfig.user}
+            onChange={e => setEmailConfig({...emailConfig, user: e.target.value})}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Senha de App</label>
+          <Input 
+            type="password"
+            placeholder="••••••••" 
+            value={emailConfig.pass}
+            onChange={e => setEmailConfig({...emailConfig, pass: e.target.value})}
+            style={inputStyle}
+          />
+        </div>
+        <div className="col-span-2">
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Nome do Remetente</label>
+          <Input 
+            placeholder="SGC SENAC <senac@exemplo.com>" 
+            value={emailConfig.from}
+            onChange={e => setEmailConfig({...emailConfig, from: e.target.value})}
+            style={inputStyle}
+          />
+        </div>
+        <div className="col-span-2 flex items-center gap-2">
+          <input 
+            type="checkbox" 
+            id="email_ativo"
+            checked={emailConfig.ativo}
+            onChange={e => setEmailConfig({...emailConfig, ativo: e.target.checked})}
+            className="w-4 h-4"
+          />
+          <label htmlFor="email_ativo" className="text-white text-sm">Envio de emails ativo</label>
+        </div>
+      </div>
+      
+      <div className="flex gap-3 mt-6">
+        <Button 
+          onClick={saveEmailConfig} 
+          disabled={loadingConfig}
+          style={{ background: accentBlue }}
+        >
+          <Save className="h-4 w-4 mr-2" />
+          {loadingConfig ? 'Salvando...' : 'Salvar Configurações'}
+        </Button>
+        
+        <Button 
+          onClick={testEmailConfig}
+          disabled={testingEmail}
+          variant="outline"
+          style={{ borderColor: accentOrange, color: accentOrange }}
+        >
+          <Mail className="h-4 w-4 mr-2" />
+          {testingEmail ? 'Enviando...' : 'Enviar Email de Teste'}
+        </Button>
+      </div>
+      
+      <p className="text-xs mt-4" style={{ color: labelColor }}>
+        ⚠️ Para Gmail, use "smtp.gmail.com" na porta 587 e uma <strong>senha de app</strong>.
+      </p>
+    </div>
+    
+    {/* Configurações do Sistema */}
+    <div className="rounded-xl p-6" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+      <h3 className="text-white text-lg mb-4 flex items-center gap-2">
+        <Globe className="h-5 w-5" style={{ color: accentBlue }} />
+        Configurações do Sistema
+      </h3>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Nome do Sistema</label>
+          <Input 
+            placeholder="SGC - Sistema de Gestão de Certificados" 
+            value={sistemaConfig.nome_sistema}
+            onChange={e => setSistemaConfig({...sistemaConfig, nome_sistema: e.target.value})}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Instituição</label>
+          <Input 
+            placeholder="SENAC" 
+            value={sistemaConfig.instituicao}
+            onChange={e => setSistemaConfig({...sistemaConfig, instituicao: e.target.value})}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>URL do Frontend</label>
+          <Input 
+            placeholder="https://seu-app.vercel.app" 
+            value={sistemaConfig.frontend_url}
+            onChange={e => setSistemaConfig({...sistemaConfig, frontend_url: e.target.value})}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>URL da Logo</label>
+          <Input 
+            placeholder="/assets/logo-white.png" 
+            value={sistemaConfig.logo_url}
+            onChange={e => setSistemaConfig({...sistemaConfig, logo_url: e.target.value})}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Cor Primária</label>
+          <div className="flex gap-2">
+            <Input 
+              placeholder="hsl(210, 80%, 55%)" 
+              value={sistemaConfig.cor_primaria}
+              onChange={e => setSistemaConfig({...sistemaConfig, cor_primaria: e.target.value})}
+              style={inputStyle}
+            />
+            <div 
+              className="w-10 h-10 rounded border"
+              style={{ background: sistemaConfig.cor_primaria || accentBlue }}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Cor Secundária</label>
+          <div className="flex gap-2">
+            <Input 
+              placeholder="hsl(30, 95%, 55%)" 
+              value={sistemaConfig.cor_secundaria}
+              onChange={e => setSistemaConfig({...sistemaConfig, cor_secundaria: e.target.value})}
+              style={inputStyle}
+            />
+            <div 
+              className="w-10 h-10 rounded border"
+              style={{ background: sistemaConfig.cor_secundaria || accentOrange }}
+            />
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex gap-3 mt-6">
+        <Button 
+          onClick={saveSistemaConfig} 
+          disabled={loadingConfig}
+          style={{ background: accentBlue }}
+        >
+          <Save className="h-4 w-4 mr-2" />
+          Salvar Configurações
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
         </main>
       </div>
 
-      {/* DIALOGS */}
+      {/* ─── DIALOGS ─────────────────────────────────────────────────────────── */}
+
+      {/* Dialog: Curso */}
       <Dialog open={courseDialog} onOpenChange={setCourseDialog}>
         <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
           <DialogHeader><DialogTitle className="text-white">{editCourse.id ? 'Editar Curso' : 'Novo Curso'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <Input placeholder="Nome" value={editCourse.nome || ''} onChange={e => setEditCourse({ ...editCourse, nome: e.target.value })} style={{ background: inputBg }} />
-            <Input type="number" placeholder="Carga Horária" value={editCourse.carga_horaria_minima || ''} onChange={e => setEditCourse({ ...editCourse, carga_horaria_minima: Number(e.target.value) })} style={{ background: inputBg }} />
+            {/* FIX: texto branco nos inputs */}
+            <Input placeholder="Nome do curso" value={editCourse.nome || ''} onChange={e => setEditCourse({ ...editCourse, nome: e.target.value })} style={inputStyle} />
+            <Input type="number" placeholder="Carga horária mínima (ex: 200)" value={editCourse.carga_horaria_minima || ''} onChange={e => setEditCourse({ ...editCourse, carga_horaria_minima: Number(e.target.value) })} style={inputStyle} />
           </div>
           <DialogFooter>
             <Button onClick={() => setCourseDialog(false)} variant="outline">Cancelar</Button>
@@ -825,20 +1375,50 @@ const Admin = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog: Usuário */}
       <Dialog open={userDialog} onOpenChange={setUserDialog}>
         <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
           <DialogHeader><DialogTitle className="text-white">{editUser.id ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4">
-            <Input placeholder="Nome" value={editUser.id ? (editUser.nome || '') : newUser.nome} onChange={e => editUser.id ? setEditUser({ ...editUser, nome: e.target.value }) : setNewUser({ ...newUser, nome: e.target.value })} style={{ background: inputBg }} />
-            <Input placeholder="Email" value={editUser.id ? (editUser.email || '') : newUser.email} onChange={e => editUser.id ? setEditUser({ ...editUser, email: e.target.value }) : setNewUser({ ...newUser, email: e.target.value })} style={{ background: inputBg }} />
-            {!editUser.id && <Input type="password" placeholder="Senha" value={newUser.senha} onChange={e => setNewUser({ ...newUser, senha: e.target.value })} style={{ background: inputBg }} />}
-            <Input placeholder="Matrícula" value={editUser.id ? (editUser.matricula || '') : newUser.matricula} onChange={e => editUser.id ? setEditUser({ ...editUser, matricula: e.target.value }) : setNewUser({ ...newUser, matricula: e.target.value })} style={{ background: inputBg }} />
+            <Input placeholder="Nome" value={editUser.id ? (editUser.nome || '') : newUser.nome} onChange={e => editUser.id ? setEditUser({ ...editUser, nome: e.target.value }) : setNewUser({ ...newUser, nome: e.target.value })} style={inputStyle} />
+            <Input placeholder="Email" value={editUser.id ? (editUser.email || '') : newUser.email} onChange={e => editUser.id ? setEditUser({ ...editUser, email: e.target.value }) : setNewUser({ ...newUser, email: e.target.value })} style={inputStyle} />
+            {!editUser.id && (
+  <div className="col-span-2 space-y-2">
+    <Input 
+      type="password" 
+      placeholder="Senha" 
+      value={newUser.senha} 
+      onChange={e => setNewUser({ ...newUser, senha: e.target.value })} 
+      style={inputStyle} 
+    />
+    <Button
+      type="button"
+      onClick={() => {
+        const senhaForte = generateSecurePassword();
+        setNewUser({ ...newUser, senha: senhaForte });
+        toast.success('Senha forte gerada!', {
+          description: 'A senha foi preenchida automaticamente.'
+        });
+      }}
+      variant="outline"
+      size="sm"
+      className="w-full"
+      style={{ 
+        borderColor: accentOrange,
+        color: accentOrange
+      }}
+    >
+      🔐 Gerar Senha Forte
+    </Button>
+  </div>
+)}
+            <Input placeholder="Matrícula" value={editUser.id ? (editUser.matricula || '') : newUser.matricula} onChange={e => editUser.id ? setEditUser({ ...editUser, matricula: e.target.value }) : setNewUser({ ...newUser, matricula: e.target.value })} style={inputStyle} />
             <Select value={editUser.id ? (editUser.perfil || 'aluno') : newUser.perfil} onValueChange={v => editUser.id ? setEditUser({ ...editUser, perfil: v }) : setNewUser({ ...newUser, perfil: v })}>
-              <SelectTrigger style={{ background: inputBg }}><SelectValue /></SelectTrigger>
+              <SelectTrigger style={inputStyle}><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="aluno">Aluno</SelectItem><SelectItem value="coordenador">Coordenador</SelectItem></SelectContent>
             </Select>
             <Select value={editUser.id ? (editUser.curso_id || '') : newUser.curso_id} onValueChange={v => editUser.id ? setEditUser({ ...editUser, curso_id: v }) : setNewUser({ ...newUser, curso_id: v })}>
-              <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Curso" /></SelectTrigger>
+              <SelectTrigger style={inputStyle}><SelectValue placeholder="Curso" /></SelectTrigger>
               <SelectContent>{cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -849,38 +1429,59 @@ const Admin = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={ruleDialog} onOpenChange={setRuleDialog}>
+      {/* Dialog: Regra — FIX: título dinâmico + todos os inputs com texto branco */}
+      <Dialog open={ruleDialog} onOpenChange={(open) => { setRuleDialog(open); if (!open) setEditRule({}); }}>
         <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
-          <DialogHeader><DialogTitle className="text-white">{editRule.id ? 'Editar Regra' : 'Nova Regra'}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-white">{editRule.id ? 'Editar Regra' : 'Nova Regra'}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
-            <Input placeholder="Área" value={editRule.area || ''} onChange={e => setEditRule({ ...editRule, area: e.target.value })} style={{ background: inputBg }} />
-            <Input type="number" placeholder="Limite de Horas" value={editRule.limite_horas || ''} onChange={e => setEditRule({ ...editRule, limite_horas: Number(e.target.value) })} style={{ background: inputBg }} />
-            <Select value={editRule.exige_comprovante_str} onValueChange={v => setEditRule({ ...editRule, exige_comprovante_str: v })}>
-              <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Exige comprovante?" /></SelectTrigger>
-              <SelectContent><SelectItem value="sim">Sim</SelectItem><SelectItem value="nao">Não</SelectItem></SelectContent>
-            </Select>
-            <Select value={editRule.curso_id || ''} onValueChange={v => setEditRule({ ...editRule, curso_id: v })}>
-              <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Curso" /></SelectTrigger>
-              <SelectContent>{cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-            </Select>
+            <div>
+              <label className="text-xs mb-1 block" style={{ color: labelColor }}>Área de Atividade</label>
+              <Input placeholder="Ex: Extensão, Pesquisa..." value={editRule.area || ''} onChange={e => setEditRule({ ...editRule, area: e.target.value })} style={inputStyle} />
+            </div>
+            <div>
+              <label className="text-xs mb-1 block" style={{ color: labelColor }}>Limite de Horas</label>
+              <Input type="number" placeholder="Ex: 60" value={editRule.limite_horas || ''} onChange={e => setEditRule({ ...editRule, limite_horas: Number(e.target.value) })} style={inputStyle} />
+            </div>
+            <div>
+              <label className="text-xs mb-1 block" style={{ color: labelColor }}>Exige Comprovante?</label>
+              <Select value={editRule.exige_comprovante_str || ''} onValueChange={v => setEditRule({ ...editRule, exige_comprovante_str: v })}>
+                <SelectTrigger style={inputStyle}><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sim">Sim</SelectItem>
+                  <SelectItem value="nao">Não</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs mb-1 block" style={{ color: labelColor }}>Curso</label>
+              <Select value={editRule.curso_id || ''} onValueChange={v => setEditRule({ ...editRule, curso_id: v })}>
+                <SelectTrigger style={inputStyle}><SelectValue placeholder="Selecione o curso..." /></SelectTrigger>
+                <SelectContent>{cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={() => { setRuleDialog(false); setEditRule({}); }} variant="outline">Cancelar</Button>
-            <Button onClick={editRule.id ? handleEditRule : handleSaveRule} style={{ background: accentBlue }}>{editRule.id ? 'Salvar' : 'Criar'}</Button>
+            <Button onClick={editRule.id ? handleEditRule : handleSaveRule} style={{ background: accentBlue }}>
+              {editRule.id ? 'Salvar Alterações' : 'Criar Regra'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Dialog: Vínculo Coordenador */}
       <Dialog open={coordDialog} onOpenChange={setCoordDialog}>
         <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
           <DialogHeader><DialogTitle className="text-white">Vincular Coordenador</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <Select value={newCoord.usuario_id} onValueChange={v => setNewCoord({ ...newCoord, usuario_id: v })}>
-              <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Coordenador" /></SelectTrigger>
+              <SelectTrigger style={inputStyle}><SelectValue placeholder="Coordenador" /></SelectTrigger>
               <SelectContent>{coordenadores.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={newCoord.curso_id} onValueChange={v => setNewCoord({ ...newCoord, curso_id: v })}>
-              <SelectTrigger style={{ background: inputBg }}><SelectValue placeholder="Curso" /></SelectTrigger>
+              <SelectTrigger style={inputStyle}><SelectValue placeholder="Curso" /></SelectTrigger>
               <SelectContent>{cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -889,6 +1490,107 @@ const Admin = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={!!createdUserData} onOpenChange={() => setCreatedUserData(null)}>
+  <DialogContent style={{ background: 'hsl(220, 50%, 12%)', border: `1px solid ${accentBlue}33` }}>
+    <DialogHeader>
+      <DialogTitle className="text-white flex items-center gap-2">
+        <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+          <Check className="h-5 w-5 text-green-500" />
+        </div>
+        Usuário Criado com Sucesso!
+      </DialogTitle>
+    </DialogHeader>
+    
+    <div className="space-y-4 py-4">
+      <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
+        <p className="text-yellow-400 text-sm mb-3 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          GUARDE ESTAS INFORMAÇÕES!
+        </p>
+        
+        <div className="space-y-3">
+          <div>
+            <p className="text-gray-400 text-xs mb-1">Nome:</p>
+            <p className="text-white font-medium">{createdUserData?.nome}</p>
+          </div>
+          
+          <div>
+            <p className="text-gray-400 text-xs mb-1">Email:</p>
+            <p className="text-blue-400 font-mono text-sm">{createdUserData?.email}</p>
+          </div>
+          
+          <div>
+            <p className="text-gray-400 text-xs mb-1">Senha:</p>
+            <div className="flex items-center gap-2">
+              <p className="text-green-400 font-mono text-sm bg-black/30 px-3 py-1 rounded">
+                {createdUserData?.senha}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <p className="text-gray-400 text-xs text-center">
+        ⚠️ Esta senha <span className="text-yellow-400 font-bold">não será mostrada novamente</span>.
+      </p>
+    </div>
+    
+    <DialogFooter className="flex flex-col sm:flex-row gap-2">
+  <Button 
+    onClick={() => {
+      const dados = `Nome: ${createdUserData?.nome}\nEmail: ${createdUserData?.email}\nSenha: ${createdUserData?.senha}`;
+      navigator.clipboard?.writeText(dados);
+      toastSuccess('Dados copiados para a área de transferência!');
+    }}
+    variant="outline"
+    style={{ borderColor: accentBlue, color: accentBlue }}
+    className="flex-1"
+  >
+    📋 Copiar Dados
+  </Button>
+  
+  <Button 
+    onClick={() => {
+      const assunto = `Suas credenciais de acesso - SGC SENAC`;
+      const corpo = `Olá ${createdUserData?.nome}!
+
+Suas credenciais de acesso ao Sistema de Gestão de Certificados (SGC) foram criadas com sucesso!
+
+📧 Email: ${createdUserData?.email}
+🔐 Senha: ${createdUserData?.senha}
+
+🌐 Acesse o sistema em: ${window.location.origin}
+
+📌 Recomendamos que você troque sua senha no primeiro acesso por segurança.
+
+Atenciosamente,
+Equipe SENAC`;
+      
+      window.open(`mailto:${createdUserData?.email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`);
+      
+      toast.success('Cliente de email aberto!', {
+        description: 'Verifique se os dados foram preenchidos corretamente.',
+        style: toastStyle
+      });
+    }}
+    variant="outline"
+    style={{ borderColor: accentOrange, color: accentOrange }}
+    className="flex-1"
+  >
+    📧 Enviar por Email
+  </Button>
+  
+  {/* 🆕 ADICIONE ESTE BOTÃO */}
+  <Button 
+    onClick={() => setCreatedUserData(null)} 
+    style={{ background: accentBlue }}
+    className="flex-1"
+  >
+    OK
+  </Button>
+</DialogFooter>
+  </DialogContent>
+</Dialog>
 
     </div>
   );

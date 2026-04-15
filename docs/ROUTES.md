@@ -1,14 +1,17 @@
+## 📁 6. `ROUTES.md` (ATUALIZADO)
+
+```markdown
 # Mapa de Rotas - SGC
 
-**Data:** 2026-04-14
+**Data:** 2026-04-14 (ATUALIZADO)
 
 ## Rotas Publicas
 
 | Rota | Componente | Descricao |
 |------|-----------|-----------|
-| `/` | `Index.tsx` | Home - selecao de perfil de acesso |
-| `/login/:role` | `Login.tsx` | Login especifico por perfil |
-| `/login` | -> `/` | Fallback, redireciona para home |
+| `/` | `Index.tsx` | Home - selecao de perfil |
+| `/login/:role` | `Login.tsx` | Login por perfil |
+| `/login` | → `/` | Fallback |
 
 ## Rotas Protegidas
 
@@ -17,44 +20,29 @@
 | `/admin/*` | `Admin.tsx` | `super_admin` |
 | `/coordenador/*` | `Coordenador.tsx` | `coordenador`, `super_admin` |
 | `/aluno/*` | `Aluno.tsx` | `aluno` |
-| `*` | `NotFound.tsx` | Qualquer (404) |
-
-## Protecao (ProtectedRoute)
-
-O componente `ProtectedRoute.tsx` faz 3 verificacoes:
-
-1. **Loading:** enquanto carrega dados do localStorage, mostra spinner
-2. **Nao autenticado:** se nao ha usuario no estado, redireciona para `/login/:perfil` baseado no localStorage
-3. **Perfil nao permitido:** se o usuario nao esta em `allowedRoles`, redireciona para seu login de perfil
-
-### allowedRoles por Rota
-
-| Rota | allowedRoles |
-|------|-------------|
-| `/admin/*` | `['super_admin']` |
-| `/coordenador/*` | `['coordenador', 'super_admin']` |
-| `/aluno/*` | `['aluno']` |
+| `*` | `NotFound.tsx` | Qualquer |
 
 ## Rotas Internas dos Painéis
 
 ### Admin (`/admin/*`)
-Nao usa sub-rotas do React Router. Gerencia secoes internas via state (`section`):
-- `dashboard` - Metricas gerais
-- `courses` - Gestao de cursos
-- `users` - Gestao de usuarios
-- `validation` - Validacao de submissoes
-- `rules` - Regras de atividades
-- `coordinators` - Vinculos coordenador-curso
+Gerencia seções via state (`section`):
+- `dashboard` - Métricas gerais ✅
+- `courses` - Gestão de cursos ✅
+- `users` - Gestão de usuários ✅
+- `validation` - Validação de submissões ✅
+- `rules` - Regras de atividades ✅
+- `coordinators` - Vínculos coordenador-curso ✅
+- 🆕 `settings` - Configurações do sistema ✅
 
 ### Coordenador (`/coordenador/*`)
-Mesmo padrao do Admin - secoes via state (`activeSection`):
-- `dashboard` - Metricas
-- `submissoes` - Lista e avaliacao de submissoes
+Seções via state (`activeSection`):
+- `dashboard` - Métricas
+- `submissoes` - Lista e avaliação
 - `alunos` - Lista de alunos
-- `cadastrar` - Cadastro de novos alunos
+- `cadastrar` - Cadastro de alunos
 
 ### Aluno (`/aluno/*`)
-Mesmo padrao - secoes via state (`activeSection`):
+Seções via state (`activeSection`):
 - `progress` - Progresso e horas
-- `submit` - Nova submissao
-- `history` - Historico de submissoes
+- `submit` - Nova submissão
+- `history` - Histórico
