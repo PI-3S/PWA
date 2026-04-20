@@ -3,18 +3,10 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, LogIn, ClipboardList, GraduationCap, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import logoWhite from '@/assets/logo-white.png';
-import { useAuth } from '@/contexts/AuthContext'; 
+import { useAuth } from '@/contexts/AuthContext';
+import { useAppTheme } from '@/hooks/useapptheme';
 
-const roleConfig: Record<string, { 
-  label: string; 
-  icon: typeof ClipboardList; 
-  glowColor: string; 
-  borderColor: string; 
-  iconColor: string; 
-  accentGradient: string; 
-  redirectPath: string; 
-  perfil: string 
-}> = {
+const roleConfig: Record<string, { label: string; icon: typeof ClipboardList; glowColor: string; borderColor: string; iconColor: string; accentGradient: string; redirectPath: string; perfil: string }> = {
   superadmin: {
     label: 'Super Admin',
     icon: ShieldCheck,
@@ -50,7 +42,8 @@ const roleConfig: Record<string, {
 const Login = () => {
   const { role } = useParams<{ role: string }>();
   const navigate = useNavigate();
-  const { signIn } = useAuth(); 
+  const { signIn, user: authUser } = useAuth();
+  const { colors: tc } = useAppTheme();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,7 +62,7 @@ const Login = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // 1. Tenta realizar o login via AuthContext
+    // 1. Usa o signIn do AuthContext (que já lida com localStorage e fetch)
     const { error } = await signIn(email, password);
 
     if (error) {
@@ -78,63 +71,52 @@ const Login = () => {
       return;
     }
 
-    // 2. Validação de Perfil: Pegamos o usuário que o signIn acabou de salvar
-    const savedUserRaw = localStorage.getItem('usuario');
-    const savedUser = savedUserRaw ? JSON.parse(savedUserRaw) : null;
+    // 2. O AuthContext acabou de salvar o usuário no estado. 
+    // Vamos pegar o perfil dele para validar se ele entrou na área certa.
+    // Como o estado do context pode demorar alguns ms para refletir, 
+    // lemos direto do localStorage para essa validação imediata.
+    const savedUser = JSON.parse(localStorage.getItem('usuario') || '{}');
     const perfilRetornado = savedUser?.perfil;
 
-    // 3. Verifica se o perfil no banco condiz com a tela de login acessada
     if (perfilRetornado !== config.perfil) {
       const messages: Record<string, string> = {
-        super_admin: 'Esta conta não possui privilégios de Administrador.',
-        coordenador: 'Esta conta não possui privilégios de Coordenador.',
-        aluno: 'Esta conta não é de um Aluno.',
+        super_admin: 'Área restrita ao Super Admin.',
+        coordenador: 'Área restrita a coordenadores.',
+        aluno: 'Área restrita a alunos.',
       };
       
-      // Limpa os dados salvos para evitar que o ProtectedRoute permita acesso indevido
+      // Limpa tudo se o perfil estiver errado para o login escolhido
       localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
       localStorage.removeItem('usuario');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('userData');
-      localStorage.removeItem('tokenExpiry');
-      
-      toast.error(`Acesso negado: ${messages[config.perfil]}`);
+      toast.error(`Acesso negado. ${messages[config.perfil]}`);
       setIsSubmitting(false);
       return;
     }
 
-    // 4. Sucesso! Notifica e redireciona
     toast.success('Bem-vindo ao Maestria!');
-    
-    // ADICIONADO: Pequeno delay para garantir que o estado foi atualizado
-    setTimeout(() => {
-      navigate(config.redirectPath);
-    }, 100);
-    
+    navigate(config.redirectPath);
     setIsSubmitting(false);
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" style={{ background: 'linear-gradient(165deg, hsl(220, 50%, 10%) 0%, hsl(225, 45%, 14%) 40%, hsl(220, 45%, 11%) 100%)' }}>
-      {/* Glow Effect Background */}
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" style={{ background: tc.pageBg }}>
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full opacity-20 blur-[150px]" style={{ background: config.iconColor }} />
 
       <Link
         to="/"
         className="absolute top-6 left-6 flex items-center gap-2 text-sm tracking-wide transition-colors hover:text-white z-20"
-        style={{ color: 'hsl(200, 30%, 55%)' }}
+        style={{ color: tc.subtitleColor }}
       >
         <ArrowLeft className="h-4 w-4" />
         Voltar
       </Link>
 
-      <img src={logoWhite} alt="Logo Maestria" className="h-14 w-auto drop-shadow-lg mb-8 relative z-10" />
+      <img src={logoWhite} alt="Logo" className="h-14 w-auto drop-shadow-lg mb-8 relative z-10" style={{ filter: tc.logoFilter }} />
 
       <div
         className="w-full max-w-md rounded-xl p-8 relative z-10"
         style={{
-          background: 'linear-gradient(145deg, hsla(220, 50%, 15%, 0.8), hsla(220, 50%, 10%, 0.9))',
+          background: tc.cardBg,
           border: `1px solid ${config.borderColor}`,
           boxShadow: `0 0 60px -15px ${config.glowColor}, inset 0 1px 0 hsla(0,0%,100%,0.05)`,
         }}
@@ -150,17 +132,17 @@ const Login = () => {
           >
             <RoleIcon className="h-7 w-7" style={{ color: config.iconColor }} />
           </div>
-          <h1 className="text-xl font-display font-bold text-white tracking-widest uppercase text-center">
+          <h1 className="text-xl font-display font-bold tracking-widest uppercase" style={{ color: tc.titleColor }}>
             {config.label}
           </h1>
-          <p className="text-xs mt-1 tracking-wide" style={{ color: 'hsl(200, 30%, 55%)' }}>
+          <p className="text-xs mt-1 tracking-wide" style={{ color: tc.subtitleColor }}>
             Faça login para continuar
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <label className="text-xs font-display uppercase tracking-widest block ml-1" style={{ color: 'hsl(200, 30%, 55%)' }}>
+            <label className="text-xs font-display uppercase tracking-widest" style={{ color: tc.labelColor }}>
               E-mail
             </label>
             <div className="relative">
@@ -171,17 +153,26 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
-                className="w-full pl-10 pr-4 py-3 rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none transition-all font-mono"
+                className="w-full pl-10 pr-4 py-3 rounded-lg text-sm placeholder:text-white/20 focus:outline-none focus:ring-2 transition-all font-mono"
                 style={{
-                  background: 'hsla(220, 40%, 12%, 0.8)',
-                  border: `1px solid hsla(220, 30%, 25%, 0.5)`,
+                  background: tc.inputBg,
+                  border: `1px solid ${tc.inputBorder}`,
+                  color: tc.textPrimary,
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = config.iconColor;
+                  e.currentTarget.style.boxShadow = `0 0 15px -5px ${config.glowColor}`;
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = tc.inputBorder;
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-display uppercase tracking-widest block ml-1" style={{ color: 'hsl(200, 30%, 55%)' }}>
+            <label className="text-xs font-display uppercase tracking-widest" style={{ color: tc.labelColor }}>
               Senha
             </label>
             <div className="relative">
@@ -193,10 +184,19 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 minLength={6}
-                className="w-full pl-10 pr-4 py-3 rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none transition-all font-mono"
+                className="w-full pl-10 pr-4 py-3 rounded-lg text-sm placeholder:text-white/20 focus:outline-none focus:ring-2 transition-all font-mono"
                 style={{
-                  background: 'hsla(220, 40%, 12%, 0.8)',
-                  border: `1px solid hsla(220, 30%, 25%, 0.5)`,
+                  background: tc.inputBg,
+                  border: `1px solid ${tc.inputBorder}`,
+                  color: tc.textPrimary,
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = config.iconColor;
+                  e.currentTarget.style.boxShadow = `0 0 15px -5px ${config.glowColor}`;
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = tc.inputBorder;
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               />
             </div>
@@ -205,7 +205,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3 rounded-lg text-sm font-display font-semibold uppercase tracking-widest text-white flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            className="w-full py-3 rounded-lg text-sm font-display font-semibold uppercase tracking-widest flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] hover:brightness-110 disabled:opacity-50"
             style={{
               background: config.accentGradient,
               boxShadow: `0 0 30px -10px ${config.glowColor}`,
@@ -221,7 +221,7 @@ const Login = () => {
         </div>
       </div>
 
-      <p className="mt-10 text-xs tracking-widest uppercase font-display relative z-10" style={{ color: 'hsl(220, 20%, 35%)' }}>
+      <p className="mt-10 text-xs tracking-widest uppercase font-display relative z-10" style={{ color: tc.footerColor }}>
         Sistema de Gestão de Atividades Complementares
       </p>
     </div>
