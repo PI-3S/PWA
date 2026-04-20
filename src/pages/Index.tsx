@@ -86,9 +86,7 @@ const Index = () => {
         <h1 className="text-3xl md:text-4xl font-display font-bold tracking-widest text-center uppercase" style={{ color: ts.titleColor, textShadow: theme === 'dark' ? '0 0 20px hsla(200, 80%, 60%, 0.3)' : 'none' }}>
           Atividades Complementares
         </h1>
-        <span className="text-lg md:text-xl font-display font-semibold tracking-[0.3em] uppercase mt-2" style={{ color: senacColor }}>
-          SENAC
-        </span>
+       
         <p className="text-sm md:text-base mt-3 tracking-wide" style={{ color: ts.subtitleColor }}>
           Selecione seu perfil de acesso
         </p>
