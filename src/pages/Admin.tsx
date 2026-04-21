@@ -17,6 +17,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { API_CONFIG } from '@/data/data';
 import logoWhite from '@/assets/logo-white.png';
 
+// --- MUDANÇA 1: Importação do hook de tema ---
+import { useAppTheme } from '@/hooks/useapptheme';
+import ThemeSwitcher from '@/components/themeswitcher';
+
 
 const API_BASE = API_CONFIG.BASE_URL;
 
@@ -30,24 +34,8 @@ const navItems = [
   { id: 'settings', label: 'Configurações', icon: Settings }, // 🆕 ADICIONE ESTA LINHA
 ];
 
-const panelBg = 'hsl(220, 45%, 11%)';
-const cardBg = 'hsla(220, 40%, 15%, 0.7)';
-const cardBorder = 'hsla(200, 60%, 40%, 0.12)';
-const inputBg = 'hsla(220, 40%, 18%, 0.8)';
-const inputBorder = 'hsla(200, 80%, 50%, 0.15)';
-const labelColor = 'hsl(220, 20%, 55%)';
 const accentBlue = 'hsl(210, 80%, 55%)';
 const accentOrange = 'hsl(30, 95%, 55%)';
-
-
-
-
-// ─── FIX: Estilo padrão para todos os inputs (texto branco) ───────────────────
-const inputStyle = {
-  background: inputBg,
-  color: 'white',
-  border: `1px solid ${inputBorder}`,
-};
 
 
 
@@ -93,6 +81,12 @@ const Admin = () => {
   const navigate = useNavigate();
   const { user, token, signOut } = useAuth();
   const userName = user?.nome || 'Admin';
+  const { colors } = useAppTheme();
+  const inputStyle = {
+    background: colors.inputBg,
+    color: colors.textPrimary,
+    border: `1px solid ${colors.inputBorder}`,
+  };
 
 const [emailConfig, setEmailConfig] = useState({
   host: '',
@@ -756,17 +750,18 @@ const handleEditUser = async () => {
   const coordenadores = usuarios.filter(u => u.perfil === 'coordenador');
 
   const MetricCard = ({ icon: Icon, label, value, color, sub }: { icon: any; label: string; value: string | number; color: string; sub?: string }) => (
-    <div className="rounded-xl p-5 transition-all duration-300 hover:scale-[1.02]" style={{ background: cardBg, border: `1px solid ${color}22`, boxShadow: `0 0 25px -10px ${color}33` }}>
+    <div className="rounded-xl p-5 transition-all duration-300 hover:scale-[1.02]" style={{ background: colors.cardBg, border: `1px solid ${color}22`, boxShadow: `0 0 25px -10px ${color}33` }}>
       <div className="flex items-center gap-3 mb-3">
         <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${color}18`, border: `1px solid ${color}33` }}>
           <Icon className="h-5 w-5" style={{ color }} />
         </div>
-        <span className="text-xs font-display tracking-wider uppercase" style={{ color: labelColor }}>{label}</span>
+        <span className="text-xs font-display tracking-wider uppercase" style={{ color: colors.labelColor }}>{label}</span>
       </div>
       <p className="text-2xl font-bold font-mono" style={{ color }}>{value}</p>
-      {sub && <p className="text-[11px] mt-1 font-mono" style={{ color: labelColor }}>{sub}</p>}
+      {sub && <p className="text-[11px] mt-1 font-mono" style={{ color: colors.labelColor }}>{sub}</p>}
     </div>
   );
+
 
   const statusColors: Record<string, { bg: string; text: string; border: string }> = {
     pendente: { bg: 'hsla(38, 92%, 50%, 0.12)', text: 'hsl(38, 92%, 60%)', border: 'hsla(38, 92%, 50%, 0.3)' },
@@ -775,13 +770,13 @@ const handleEditUser = async () => {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background: `linear-gradient(165deg, hsl(220, 50%, 10%) 0%, hsl(225, 45%, 14%) 40%, hsl(220, 45%, 11%) 100%)` }}>
+    <div className="min-h-screen flex transition-colors duration-300" style={{ background: colors.pageBg }}>
       
-      <aside className="w-64 shrink-0 flex flex-col border-r" style={{ background: 'hsl(220, 50%, 9%)', borderColor: cardBorder }}>
-        <div className="p-5 flex items-center gap-3 border-b" style={{ borderColor: cardBorder }}>
-          <img src={logoWhite} alt="Logo" className="h-9 w-auto" />
+      <aside className="w-64 shrink-0 flex flex-col border-r" style={{ background: colors.sidebarBg, borderColor: colors.sidebarBorder }}>
+        <div className="p-5 flex items-center gap-3 border-b" style={{ borderColor: colors.sidebarBorder }}>
+          <img src={logoWhite} alt="Logo" className="h-9 w-auto" style={{ filter: colors.logoFilter }} />
           <div>
-            <p className="text-xs font-display tracking-widest uppercase text-white">Atividades</p>
+            <p className="text-xs font-display tracking-widest uppercase" style={{ color: colors.sidebarTextActive }}>Atividades</p>
             <p className="text-[10px] font-display tracking-[0.2em] uppercase" style={{ color: accentOrange }}>SENAC</p>
           </div>
         </div>
@@ -798,7 +793,7 @@ const handleEditUser = async () => {
                 setRoleFilter('all');
               }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200"
-              style={section === item.id ? { background: `${accentBlue}18`, border: `1px solid ${accentBlue}33`, color: 'white' } : { color: labelColor }}
+              style={section === item.id ? { background: `${accentBlue}18`, border: `1px solid ${accentBlue}33`, color: colors.sidebarTextActive } : { color: colors.sidebarText }}
             >
               <item.icon className="h-4 w-4" />
               {item.label}
@@ -806,14 +801,14 @@ const handleEditUser = async () => {
           ))}
         </nav>
 
-        <div className="p-4 border-t" style={{ borderColor: cardBorder }}>
+        <div className="p-4 border-t" style={{ borderColor: colors.sidebarBorder }}>
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: `linear-gradient(135deg, ${accentBlue}, hsl(220, 70%, 60%))` }}>
               {userName.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p className="text-sm text-white">{userName}</p>
-              <p className="text-[10px]" style={{ color: labelColor }}>Super Admin</p>
+              <p className="text-sm" style={{ color: colors.sidebarTextActive }}>{userName}</p>
+              <p className="text-[10px]" style={{ color: colors.labelColor }}>Super Admin</p>
             </div>
           </div>
           <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs uppercase" style={{ background: 'hsla(0, 70%, 50%, 0.12)', color: 'hsl(0, 70%, 65%)' }}>
@@ -823,8 +818,9 @@ const handleEditUser = async () => {
       </aside>
 
       <div className="flex-1 flex flex-col">
-        <header className="h-14 flex items-center px-6 border-b" style={{ background: 'hsla(220, 50%, 9%, 0.8)', borderColor: cardBorder }}>
-          <h1 className="text-white text-sm uppercase tracking-widest">{navItems.find(n => n.id === section)?.label}</h1>
+        <header className="h-14 flex items-center justify-between px-6 border-b" style={{ background: colors.headerBg, borderColor: colors.headerBorder }}>
+          <h1 className="text-sm uppercase tracking-widest" style={{ color: colors.textPrimary }}>{navItems.find(n => n.id === section)?.label}</h1>
+          <ThemeSwitcher />
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -839,12 +835,12 @@ const handleEditUser = async () => {
                 <MetricCard icon={X} label="Reprovadas" value={metrics?.reprovadas || 0} color="hsl(0, 72%, 55%)" />
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="rounded-xl p-6" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-                  <h3 className="text-white text-sm mb-4">Submissões por Curso</h3>
+                <div className="rounded-xl p-6" style={{ background: colors.cardBg, border: `1px solid ${colors.cardBorder}` }}>
+                  <h3 className="text-sm mb-4" style={{ color: colors.textPrimary }}>Submissões por Curso</h3>
                   {(metrics?.por_curso || []).map((c, i) => (
                     <div key={i} className="mb-3">
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-white">{c.curso}</span>
+                        <span style={{ color: colors.textPrimary }}>{c.curso}</span>
                         <span style={{ color: accentBlue }}>{c.total}</span>
                       </div>
                       <div className="h-2 rounded-full bg-white/10">
@@ -853,11 +849,11 @@ const handleEditUser = async () => {
                     </div>
                   ))}
                 </div>
-                <div className="rounded-xl p-6" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-                  <h3 className="text-white text-sm mb-4">Submissões por Área</h3>
+                <div className="rounded-xl p-6" style={{ background: colors.cardBg, border: `1px solid ${colors.cardBorder}` }}>
+                  <h3 className="text-sm mb-4" style={{ color: colors.textPrimary }}>Submissões por Área</h3>
                   {(metrics?.por_area || []).map((a, i) => (
-                    <div key={i} className="flex justify-between py-2 px-3 rounded-lg bg-white/5">
-                      <span className="text-white">{a.area}</span>
+                    <div key={i} className="flex justify-between py-2 px-3 rounded-lg" style={{ background: `${colors.cardBorder}` }}>
+                      <span style={{ color: colors.textPrimary }}>{a.area}</span>
                       <span style={{ color: accentBlue }}>{a.total}</span>
                     </div>
                   ))}
@@ -870,14 +866,14 @@ const handleEditUser = async () => {
           {section === 'courses' && (
   <>
     <div className="flex justify-between">
-      <h2 className="text-white text-xl">Gestão de Cursos</h2>
+      <h2 className="text-xl" style={{ color: colors.textPrimary }}>Gestão de Cursos</h2>
       <Button onClick={() => { setEditCourse({}); setCourseDialog(true); }} style={{ background: accentBlue }}>
         <Plus className="h-4 w-4 mr-2" /> Novo Curso
       </Button>
     </div>
-    <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: colors.cardBg }}>
       <table className="w-full">
-        <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
+        <thead style={{ background: colors.tableHeaderBg }}>
           <tr>
             <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Nome</th>
             <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Carga Horária</th>
@@ -886,8 +882,8 @@ const handleEditUser = async () => {
         </thead>
         <tbody>
           {cursos.map(c => (
-            <tr key={c.id} className="border-b" style={{ borderColor: cardBorder }}>
-              <td className="px-5 py-4 text-white">{c.nome}</td>
+            <tr key={c.id} className="border-b" style={{ borderColor: colors.cardBorder }}>
+              <td className="px-5 py-4" style={{ color: colors.textPrimary }}>{c.nome}</td>
               <td className="px-5 py-4" style={{ color: accentBlue }}>{c.carga_horaria_minima}h</td>
               <td className="px-5 py-4">
                 {/* ✅ CORRETO: Botões de Editar e Excluir curso */}
@@ -929,9 +925,9 @@ const handleEditUser = async () => {
                   <UserPlus className="h-4 w-4 mr-2" /> Novo Usuário
                 </Button>
               </div>
-              <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
+              <div className="rounded-xl overflow-hidden" style={{ background: colors.cardBg }}>
                 <table className="w-full">
-                  <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
+                  <thead style={{ background: colors.tableHeaderBg }}>
                     <tr>
                       <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Nome/Email</th>
                       <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Perfil</th>
@@ -941,15 +937,15 @@ const handleEditUser = async () => {
                   </thead>
                   <tbody>
                     {filteredUsuarios.map(u => (
-                      <tr key={u.id} className="border-b" style={{ borderColor: cardBorder }}>
+                      <tr key={u.id} className="border-b" style={{ borderColor: colors.cardBorder }}>
                         <td className="px-5 py-4">
-                          <p className="text-white">{u.nome}</p>
-                          <p className="text-xs" style={{ color: labelColor }}>{u.email}</p>
+                          <p style={{ color: colors.textPrimary }}>{u.nome}</p>
+                          <p className="text-xs" style={{ color: colors.labelColor }}>{u.email}</p>
                         </td>
                         <td className="px-5 py-4">
                           <Badge style={{ color: u.perfil === 'coordenador' ? accentOrange : accentBlue }}>{u.perfil}</Badge>
                         </td>
-                        <td className="px-5 py-4 text-white">{u.curso_nome || '-'}</td>
+                        <td className="px-5 py-4" style={{ color: colors.textPrimary }}>{u.curso_nome || '-'}</td>
                         <td className="px-5 py-4">
                           <button onClick={() => { setEditUser(u); setUserDialog(true); }} className="mr-2" style={{ color: accentBlue }}>
                             <Pencil className="h-4 w-4" />
@@ -987,9 +983,9 @@ const handleEditUser = async () => {
         </SelectContent>
       </Select>
     </div>
-    <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: colors.cardBg }}>
       <table className="w-full">
-        <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
+        <thead style={{ background: colors.tableHeaderBg }}>
           <tr>
             <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Aluno</th>
             <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Curso</th>
@@ -1005,10 +1001,10 @@ const handleEditUser = async () => {
             const isExpanded = expandedId === sub.id;
             return (
               <React.Fragment key={sub.id}>
-                <tr className="border-b" style={{ borderColor: cardBorder }}>
-                  <td className="px-5 py-4 text-white">{sub.aluno_nome}</td>
-                  <td className="px-5 py-4" style={{ color: labelColor }}>{sub.curso_nome}</td>
-                  <td className="px-5 py-4" style={{ color: labelColor }}>{sub.area}</td>
+                <tr className="border-b" style={{ borderColor: colors.cardBorder }}>
+                  <td className="px-5 py-4" style={{ color: colors.textPrimary }}>{sub.aluno_nome}</td>
+                  <td className="px-5 py-4" style={{ color: colors.labelColor }}>{sub.curso_nome}</td>
+                  <td className="px-5 py-4" style={{ color: colors.labelColor }}>{sub.area}</td>
                   <td className="px-5 py-4" style={{ color: accentBlue }}>{sub.horas_solicitadas || sub.carga_horaria_solicitada || 0}h</td>
                   <td className="px-5 py-4"><Badge style={{ background: sc.bg, color: sc.text }}>{sub.status}</Badge></td>
                   <td className="px-5 py-4">
@@ -1018,7 +1014,7 @@ const handleEditUser = async () => {
                       style={{ 
                         background: isExpanded ? `${accentBlue}22` : 'transparent',
                         border: `1px solid ${isExpanded ? accentBlue : 'transparent'}`,
-                        color: isExpanded ? accentBlue : labelColor 
+                        color: isExpanded ? accentBlue : colors.labelColor 
                       }}
                       title={isExpanded ? "Recolher detalhes" : "Expandir detalhes"}
                     >
@@ -1035,7 +1031,7 @@ const handleEditUser = async () => {
                     <td colSpan={6} className="px-8 py-6 bg-black/20">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <p className="text-white mb-2">Descrição: {sub.descricao || '-'}</p>
+                          <p className="mb-2" style={{ color: colors.textPrimary }}>Descrição: {sub.descricao || '-'}</p>
                           <div className="flex gap-2">
                             <Button onClick={() => handleStatusChange(sub.id, 'reprovado')} style={{ background: 'hsla(0, 72%, 50%, 0.2)', color: 'hsl(0, 72%, 60%)' }}>
                               <X className="h-4 w-4 mr-2" /> Reprovar
@@ -1047,14 +1043,15 @@ const handleEditUser = async () => {
                         </div>
                         <div>
                           {loadingCert ? (
-                            <p className="text-white">Carregando certificado...</p>
+                            <p style={{ color: colors.textPrimary }}>Carregando certificado...</p>
                           ) : certData?.url_arquivo ? (
                             <div className="space-y-3">
                               <a
                                 href={certData.url_arquivo}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors w-fit"
+                                className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg hover:opacity-80 transition-colors w-fit"
+                                style={{ background: `${colors.cardBorder}`, border: `1px solid ${colors.cardBorder}`, color: colors.textPrimary }}
                               >
                                 <ExternalLink className="h-4 w-4" /> Abrir Certificado
                               </a>
@@ -1086,14 +1083,14 @@ const handleEditUser = async () => {
           {section === 'rules' && (
             <div className="space-y-4">
               <div className="flex justify-between">
-                <h2 className="text-white text-xl">Regras de Atividades</h2>
+                <h2 className="text-xl" style={{ color: colors.textPrimary }}>Regras de Atividades</h2>
                 <Button onClick={() => { setEditRule({}); setRuleDialog(true); }} style={{ background: accentBlue }}>
                   <Plus className="h-4 w-4 mr-2" /> Nova Regra
                 </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {regras.map(r => (
-                  <div key={r.id} className="p-5 rounded-xl relative" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+                  <div key={r.id} className="p-5 rounded-xl relative" style={{ background: colors.cardBg, border: `1px solid ${colors.cardBorder}` }}>
                     <div className="absolute top-3 right-3 flex gap-1">
                       {/* FIX: Botão editar passa exige_comprovante_str corretamente */}
                       <button
@@ -1113,12 +1110,12 @@ const handleEditUser = async () => {
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-                    <h4 className="text-white text-lg mb-1 pr-16">{r.area}</h4>
-                    <p className="text-xs mb-2" style={{ color: labelColor }}>{r.curso_nome}</p>
+                    <h4 className="text-lg mb-1 pr-16" style={{ color: colors.textPrimary }}>{r.area}</h4>
+                    <p className="text-xs mb-2" style={{ color: colors.labelColor }}>{r.curso_nome}</p>
                     <p className="text-sm mb-2" style={{ color: accentBlue }}>Limite: {r.limite_horas}h</p>
                     <Badge style={{
                       background: r.exige_comprovante ? 'hsla(152, 60%, 40%, 0.15)' : 'hsla(220, 40%, 30%, 0.4)',
-                      color: r.exige_comprovante ? 'hsl(152, 60%, 55%)' : labelColor,
+                      color: r.exige_comprovante ? 'hsl(152, 60%, 55%)' : colors.labelColor,
                       border: `1px solid ${r.exige_comprovante ? 'hsla(152,60%,40%,0.3)' : 'transparent'}`,
                     }}>
                       {r.exige_comprovante ? 'Exige comprovante' : 'Não exige'}
@@ -1133,14 +1130,14 @@ const handleEditUser = async () => {
           {section === 'coordinators' && (
             <div className="space-y-4">
               <div className="flex justify-between">
-                <h2 className="text-white text-xl">Vínculos de Coordenadores</h2>
+                <h2 className="text-xl" style={{ color: colors.textPrimary }}>Vínculos de Coordenadores</h2>
                 <Button onClick={() => setCoordDialog(true)} style={{ background: accentBlue }}>
                   <Link2 className="h-4 w-4 mr-2" /> Novo Vínculo
                 </Button>
               </div>
-              <div className="rounded-xl overflow-hidden" style={{ background: cardBg }}>
+              <div className="rounded-xl overflow-hidden" style={{ background: colors.cardBg }}>
                 <table className="w-full">
-                  <thead style={{ background: 'hsla(220, 40%, 18%, 0.6)' }}>
+                  <thead style={{ background: colors.tableHeaderBg }}>
                     <tr>
                       <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Coordenador</th>
                       <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Curso</th>
@@ -1149,8 +1146,8 @@ const handleEditUser = async () => {
                   </thead>
                   <tbody>
                     {coordCursos.map(c => (
-                      <tr key={c.id} className="border-b" style={{ borderColor: cardBorder }}>
-                        <td className="px-5 py-4 text-white">{c.coordenador_nome}</td>
+                      <tr key={c.id} className="border-b" style={{ borderColor: colors.cardBorder }}>
+                        <td className="px-5 py-4" style={{ color: colors.textPrimary }}>{c.coordenador_nome}</td>
                         <td className="px-5 py-4" style={{ color: accentOrange }}>{c.curso_nome}</td>
                         <td className="px-5 py-4">
                           <button onClick={() => handleRemoveCoordVinculo(c.id)} style={{ color: 'hsl(0, 72%, 60%)' }}>
@@ -1167,21 +1164,21 @@ const handleEditUser = async () => {
             {/* SETTINGS */}
 {section === 'settings' && (
   <div className="space-y-6">
-    <h2 className="text-white text-xl flex items-center gap-2">
+    <h2 className="text-xl flex items-center gap-2" style={{ color: colors.textPrimary }}>
       <Settings className="h-5 w-5" />
       Configurações do Sistema
     </h2>
     
     {/* Configurações de Email */}
-    <div className="rounded-xl p-6" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-      <h3 className="text-white text-lg mb-4 flex items-center gap-2">
+    <div className="rounded-xl p-6" style={{ background: colors.cardBg, border: `1px solid ${colors.cardBorder}` }}>
+      <h3 className="text-lg mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
         <Mail className="h-5 w-5" style={{ color: accentBlue }} />
         Configurações de Email
       </h3>
       
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Servidor SMTP</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Servidor SMTP</label>
           <Input 
             placeholder="smtp.gmail.com" 
             value={emailConfig.host}
@@ -1190,7 +1187,7 @@ const handleEditUser = async () => {
           />
         </div>
         <div>
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Porta</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Porta</label>
           <Input 
             type="number"
             placeholder="587" 
@@ -1200,7 +1197,7 @@ const handleEditUser = async () => {
           />
         </div>
         <div>
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Email Remetente</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Email Remetente</label>
           <Input 
             placeholder="senac@exemplo.com" 
             value={emailConfig.user}
@@ -1209,7 +1206,7 @@ const handleEditUser = async () => {
           />
         </div>
         <div>
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Senha de App</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Senha de App</label>
           <Input 
             type="password"
             placeholder="••••••••" 
@@ -1219,7 +1216,7 @@ const handleEditUser = async () => {
           />
         </div>
         <div className="col-span-2">
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Nome do Remetente</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Nome do Remetente</label>
           <Input 
             placeholder="SGC SENAC <senac@exemplo.com>" 
             value={emailConfig.from}
@@ -1235,7 +1232,7 @@ const handleEditUser = async () => {
             onChange={e => setEmailConfig({...emailConfig, ativo: e.target.checked})}
             className="w-4 h-4"
           />
-          <label htmlFor="email_ativo" className="text-white text-sm">Envio de emails ativo</label>
+          <label htmlFor="email_ativo" className="text-sm" style={{ color: colors.textPrimary }}>Envio de emails ativo</label>
         </div>
       </div>
       
@@ -1260,21 +1257,21 @@ const handleEditUser = async () => {
         </Button>
       </div>
       
-      <p className="text-xs mt-4" style={{ color: labelColor }}>
+      <p className="text-xs mt-4" style={{ color: colors.labelColor }}>
         ⚠️ Para Gmail, use "smtp.gmail.com" na porta 587 e uma <strong>senha de app</strong>.
       </p>
     </div>
     
     {/* Configurações do Sistema */}
-    <div className="rounded-xl p-6" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-      <h3 className="text-white text-lg mb-4 flex items-center gap-2">
+    <div className="rounded-xl p-6" style={{ background: colors.cardBg, border: `1px solid ${colors.cardBorder}` }}>
+      <h3 className="text-lg mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
         <Globe className="h-5 w-5" style={{ color: accentBlue }} />
         Configurações do Sistema
       </h3>
       
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Nome do Sistema</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Nome do Sistema</label>
           <Input 
             placeholder="SGC - Sistema de Gestão de Certificados" 
             value={sistemaConfig.nome_sistema}
@@ -1283,7 +1280,7 @@ const handleEditUser = async () => {
           />
         </div>
         <div>
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Instituição</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Instituição</label>
           <Input 
             placeholder="SENAC" 
             value={sistemaConfig.instituicao}
@@ -1292,7 +1289,7 @@ const handleEditUser = async () => {
           />
         </div>
         <div>
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>URL do Frontend</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>URL do Frontend</label>
           <Input 
             placeholder="https://seu-app.vercel.app" 
             value={sistemaConfig.frontend_url}
@@ -1301,7 +1298,7 @@ const handleEditUser = async () => {
           />
         </div>
         <div>
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>URL da Logo</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>URL da Logo</label>
           <Input 
             placeholder="/assets/logo-white.png" 
             value={sistemaConfig.logo_url}
@@ -1310,7 +1307,7 @@ const handleEditUser = async () => {
           />
         </div>
         <div>
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Cor Primária</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Cor Primária</label>
           <div className="flex gap-2">
             <Input 
               placeholder="hsl(210, 80%, 55%)" 
@@ -1325,7 +1322,7 @@ const handleEditUser = async () => {
           </div>
         </div>
         <div>
-          <label className="text-xs mb-1 block" style={{ color: labelColor }}>Cor Secundária</label>
+          <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Cor Secundária</label>
           <div className="flex gap-2">
             <Input 
               placeholder="hsl(30, 95%, 55%)" 
@@ -1361,8 +1358,8 @@ const handleEditUser = async () => {
 
       {/* Dialog: Curso */}
       <Dialog open={courseDialog} onOpenChange={setCourseDialog}>
-        <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
-          <DialogHeader><DialogTitle className="text-white">{editCourse.id ? 'Editar Curso' : 'Novo Curso'}</DialogTitle></DialogHeader>
+        <DialogContent style={{ background: colors.panelBg }}>
+          <DialogHeader><DialogTitle style={{ color: colors.textPrimary }}>{editCourse.id ? 'Editar Curso' : 'Novo Curso'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             {/* FIX: texto branco nos inputs */}
             <Input placeholder="Nome do curso" value={editCourse.nome || ''} onChange={e => setEditCourse({ ...editCourse, nome: e.target.value })} style={inputStyle} />
@@ -1377,8 +1374,8 @@ const handleEditUser = async () => {
 
       {/* Dialog: Usuário */}
       <Dialog open={userDialog} onOpenChange={setUserDialog}>
-        <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
-          <DialogHeader><DialogTitle className="text-white">{editUser.id ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle></DialogHeader>
+        <DialogContent style={{ background: colors.panelBg }}>
+          <DialogHeader><DialogTitle style={{ color: colors.textPrimary }}>{editUser.id ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4">
             <Input placeholder="Nome" value={editUser.id ? (editUser.nome || '') : newUser.nome} onChange={e => editUser.id ? setEditUser({ ...editUser, nome: e.target.value }) : setNewUser({ ...newUser, nome: e.target.value })} style={inputStyle} />
             <Input placeholder="Email" value={editUser.id ? (editUser.email || '') : newUser.email} onChange={e => editUser.id ? setEditUser({ ...editUser, email: e.target.value }) : setNewUser({ ...newUser, email: e.target.value })} style={inputStyle} />
@@ -1431,21 +1428,21 @@ const handleEditUser = async () => {
 
       {/* Dialog: Regra — FIX: título dinâmico + todos os inputs com texto branco */}
       <Dialog open={ruleDialog} onOpenChange={(open) => { setRuleDialog(open); if (!open) setEditRule({}); }}>
-        <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
+        <DialogContent style={{ background: colors.panelBg }}>
           <DialogHeader>
-            <DialogTitle className="text-white">{editRule.id ? 'Editar Regra' : 'Nova Regra'}</DialogTitle>
+            <DialogTitle style={{ color: colors.textPrimary }}>{editRule.id ? 'Editar Regra' : 'Nova Regra'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-xs mb-1 block" style={{ color: labelColor }}>Área de Atividade</label>
+              <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Área de Atividade</label>
               <Input placeholder="Ex: Extensão, Pesquisa..." value={editRule.area || ''} onChange={e => setEditRule({ ...editRule, area: e.target.value })} style={inputStyle} />
             </div>
             <div>
-              <label className="text-xs mb-1 block" style={{ color: labelColor }}>Limite de Horas</label>
+              <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Limite de Horas</label>
               <Input type="number" placeholder="Ex: 60" value={editRule.limite_horas || ''} onChange={e => setEditRule({ ...editRule, limite_horas: Number(e.target.value) })} style={inputStyle} />
             </div>
             <div>
-              <label className="text-xs mb-1 block" style={{ color: labelColor }}>Exige Comprovante?</label>
+              <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Exige Comprovante?</label>
               <Select value={editRule.exige_comprovante_str || ''} onValueChange={v => setEditRule({ ...editRule, exige_comprovante_str: v })}>
                 <SelectTrigger style={inputStyle}><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
@@ -1455,7 +1452,7 @@ const handleEditUser = async () => {
               </Select>
             </div>
             <div>
-              <label className="text-xs mb-1 block" style={{ color: labelColor }}>Curso</label>
+              <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Curso</label>
               <Select value={editRule.curso_id || ''} onValueChange={v => setEditRule({ ...editRule, curso_id: v })}>
                 <SelectTrigger style={inputStyle}><SelectValue placeholder="Selecione o curso..." /></SelectTrigger>
                 <SelectContent>{cursos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
@@ -1473,8 +1470,8 @@ const handleEditUser = async () => {
 
       {/* Dialog: Vínculo Coordenador */}
       <Dialog open={coordDialog} onOpenChange={setCoordDialog}>
-        <DialogContent style={{ background: 'hsl(220, 50%, 12%)' }}>
-          <DialogHeader><DialogTitle className="text-white">Vincular Coordenador</DialogTitle></DialogHeader>
+        <DialogContent style={{ background: colors.panelBg }}>
+          <DialogHeader><DialogTitle style={{ color: colors.textPrimary }}>Vincular Coordenador</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <Select value={newCoord.usuario_id} onValueChange={v => setNewCoord({ ...newCoord, usuario_id: v })}>
               <SelectTrigger style={inputStyle}><SelectValue placeholder="Coordenador" /></SelectTrigger>
@@ -1493,7 +1490,7 @@ const handleEditUser = async () => {
       <Dialog open={!!createdUserData} onOpenChange={() => setCreatedUserData(null)}>
   <DialogContent style={{ background: 'hsl(220, 50%, 12%)', border: `1px solid ${accentBlue}33` }}>
     <DialogHeader>
-      <DialogTitle className="text-white flex items-center gap-2">
+      <DialogTitle className="flex items-center gap-2" style={{ color: colors.textPrimary }}>
         <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
           <Check className="h-5 w-5 text-green-500" />
         </div>
@@ -1511,7 +1508,7 @@ const handleEditUser = async () => {
         <div className="space-y-3">
           <div>
             <p className="text-gray-400 text-xs mb-1">Nome:</p>
-            <p className="text-white font-medium">{createdUserData?.nome}</p>
+            <p className="font-medium" style={{ color: colors.textPrimary }}>{createdUserData?.nome}</p>
           </div>
           
           <div>
