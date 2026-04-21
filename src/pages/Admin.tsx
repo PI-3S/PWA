@@ -4,7 +4,7 @@ import {
   LayoutDashboard, BookOpen, Users, FileCheck, ScrollText, Link2,
   LogOut, Search, Plus, Pencil, Trash2, Check, X, ChevronRight, ChevronDown, ChevronUp,
   GraduationCap, Clock, Award, AlertTriangle, Filter,
-  ShieldCheck, UserPlus, Bell, ExternalLink, Settings, Save, Mail, Globe, Palette
+  ShieldCheck, UserPlus, Bell, ExternalLink, Settings, Save, Mail, Globe, Palette, KeyRound
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,18 +59,19 @@ interface DashboardMetrics {
 
 interface Curso { id: string; nome: string; carga_horaria_minima: number; }
 interface Usuario { id: string; nome: string; email: string; perfil: string; curso_id?: string; matricula?: string; curso_nome?: string; }
-interface Submissao { 
-  id: string; 
-  aluno_id: string; 
-  status: string; 
-  data_envio: string; 
-  descricao?: string; 
+interface Submissao {
+  id: string;
+  aluno_id: string;
+  status: string;
+  data_envio: string;
+  data_validacao?: string;
+  descricao?: string;
   horas_solicitadas?: number;
   carga_horaria_solicitada?: number;
-  aluno_nome?: string; 
-  curso_nome?: string; 
-  area?: string; 
-  tipo?: string; 
+  aluno_nome?: string;
+  curso_nome?: string;
+  area?: string;
+  tipo?: string;
 }
 interface Regra { id: string; area: string; limite_horas: number; exige_comprovante: boolean; curso_id: string; curso_nome?: string; }
 interface CoordCurso { id: string; usuario_id: string; curso_id: string; coordenador_nome?: string; coordenador_email?: string; curso_nome?: string; }
@@ -137,6 +138,12 @@ const [testingEmail, setTestingEmail] = useState(false);
   const [editRule, setEditRule] = useState<Partial<Regra & { exige_comprovante_str: string }>>({});
   const [coordDialog, setCoordDialog] = useState(false);
   const [newCoord, setNewCoord] = useState({ usuario_id: '', curso_id: '' });
+  const [correcaoDialog, setCorrecaoDialog] = useState(false);
+  const [correcaoSubmissao, setCorrecaoSubmissao] = useState<Submissao | null>(null);
+  const [correcaoObs, setCorrecaoObs] = useState('');
+  const [resetSenhaDialog, setResetSenhaDialog] = useState(false);
+  const [resetSenhaUser, setResetSenhaUser] = useState<Usuario | null>(null);
+  const [resetSenhaLoading, setResetSenhaLoading] = useState(false);
 
 const generateSecurePassword = () => {
   const length = 12;
@@ -277,55 +284,63 @@ const loadSistemaConfig = useCallback(async () => {
 }, [apiFetch, roleFilter]);
 
   const loadSubmissoes = useCallback(async () => {
-  if (!token) return;
-  try {
-    const d = await apiFetch('/api/submissoes');
-    const raw = d.submissoes || d.data || [];
+    if (!token) return;
+    try {
+      // Busca submissões, usuários, cursos e regras em paralelo
+      const [dSubmissoes, dUsuarios, dCursos, dRegras] = await Promise.all([
+        apiFetch('/api/submissoes'),
+        apiFetch('/api/usuarios'),
+        apiFetch('/api/cursos'),
+        apiFetch('/api/regras'),
+      ]);
 
-    // log para você ver o que a API realmente retorna
-    if (raw.length > 0) {
-  console.log('[submissoes] exemplo de item:', raw[0]);
-  console.log('[submissoes] TODAS as chaves:', Object.keys(raw[0])); // ← Adicione esta linha
-}
+      const raw = dSubmissoes.submissoes || dSubmissoes.data || [];
+      const usuarios = dUsuarios.usuarios || [];
+      const cursos = dCursos.cursos || [];
+      const regras = dRegras.regras || [];
 
-    const mapped = raw.map((s: any) => ({
-  ...s,
-  aluno_nome:
-    s.aluno_nome ||
-    s.nome_aluno ||
-    s.aluno?.nome ||
-    s.usuario?.nome ||        // ← Adicionado
-    s.usuario_nome ||
-    s.estudante_nome ||
-    s.student_name ||          // ← Adicionado
-    '—',
-  curso_nome:
-    s.curso_nome ||
-    s.nome_curso ||
-    s.curso?.nome ||
-    s.course_name ||           // ← Adicionado
-    '—',
-  area:
-    s.area ||
-    s.area_atividade ||
-    s.atividade_area ||        // ← Adicionado
-    s.categoria ||
-    s.tipo ||
-    s.regra?.area ||           // ← Adicionado
-    '—',
-  horas_solicitadas:
-    s.horas_solicitadas ||
-    s.carga_horaria_solicitada ||
-    s.carga_horaria ||
-    s.horas ||
-    0,
-  status: s.status || 'pendente',
-}));
-    setSubmissoes(mapped);
-  } catch (e: any) {
-    if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao carregar submissões.');
-  }
-}, [apiFetch]);
+      // Cria Maps para lookup eficiente
+      const usuariosMap = new Map<string, { nome: string; curso_id?: string }>();
+      usuarios.forEach((u: any) => usuariosMap.set(u.id, { nome: u.nome, curso_id: u.curso_id }));
+
+      const cursosMap = new Map<string, string>();
+      cursos.forEach((c: any) => cursosMap.set(c.id, c.nome));
+
+      const regrasMap = new Map<string, { area: string }>();
+      regras.forEach((r: any) => regrasMap.set(r.id, { area: r.area }));
+
+      const mapped = raw.map((s: any) => {
+        // Busca dados do aluno pelo ID
+        const aluno = usuariosMap.get(s.aluno_id || s.usuario_id);
+        // Busca nome do curso (prioriza o campo direto, depois lookup)
+        const cursoNome = s.curso_nome ||
+          s.nome_curso ||
+          s.curso?.nome ||
+          cursosMap.get(s.curso_id || aluno?.curso_id) ||
+          '—';
+        // Busca área (prioriza campo direto, depois lookup pela regra)
+        const areaNome = s.area ||
+          s.area_atividade ||
+          s.categoria ||
+          s.tipo ||
+          (s.regra_id ? regrasMap.get(s.regra_id)?.area : null) ||
+          '—';
+
+        return {
+          ...s,
+          aluno_nome: s.aluno_nome || s.nome_aluno || aluno?.nome || s.usuario?.nome || s.usuario_nome || '—',
+          curso_nome: cursoNome,
+          area: areaNome,
+          horas_solicitadas: s.horas_solicitadas || s.carga_horaria_solicitada || s.carga_horaria || s.horas || 0,
+          status: s.status || 'pendente',
+          data_validacao: s.data_validacao || s.updated_at || s.dataAtualizacao,
+        };
+      });
+      setSubmissoes(mapped);
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao carregar submissões.');
+    }
+  }, [apiFetch]);
 
   const loadRegras = useCallback(async () => {
     if (!token) return;
@@ -719,6 +734,51 @@ const handleEditUser = async () => {
     }
   };
 
+  // Funções para correção de submissão
+  const openCorrecaoDialog = (sub: Submissao) => {
+    setCorrecaoSubmissao(sub);
+    setCorrecaoObs('');
+    setCorrecaoDialog(true);
+  };
+
+  const handleCorrecao = async () => {
+    if (!correcaoSubmissao || !correcaoObs.trim()) {
+      toastError('Observação é obrigatória para solicitar correção.');
+      return;
+    }
+    try {
+      await apiFetch(`/api/submissoes/${correcaoSubmissao.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'correcao', observacao: correcaoObs }),
+      });
+      toastSuccess('Correção solicitada com sucesso!');
+      setCorrecaoDialog(false);
+      setCorrecaoSubmissao(null);
+      setCorrecaoObs('');
+      await Promise.all([loadSubmissoes(), loadDashboard()]);
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao solicitar correção.');
+    }
+  };
+
+  // Função para resetar senha
+  const handleResetSenha = async () => {
+    if (!resetSenhaUser) return;
+    setResetSenhaLoading(true);
+    try {
+      const res = await apiFetch(`/api/usuarios/${resetSenhaUser.id}/reset-senha`, {
+        method: 'POST',
+      });
+      toastSuccess(`Senha resetada! Nova senha enviada para ${resetSenhaUser.email}`);
+      setResetSenhaDialog(false);
+      setResetSenhaUser(null);
+    } catch (e: any) {
+      if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao resetar senha.');
+    } finally {
+      setResetSenhaLoading(false);
+    }
+  };
+
   const toggleExpand = (id: string) => {
     if (expandedId === id) { 
       setExpandedId(null); 
@@ -767,6 +827,7 @@ const handleEditUser = async () => {
     pendente: { bg: 'hsla(38, 92%, 50%, 0.12)', text: 'hsl(38, 92%, 60%)', border: 'hsla(38, 92%, 50%, 0.3)' },
     aprovado: { bg: 'hsla(152, 60%, 40%, 0.12)', text: 'hsl(152, 60%, 55%)', border: 'hsla(152, 60%, 40%, 0.3)' },
     reprovado: { bg: 'hsla(0, 72%, 50%, 0.12)', text: 'hsl(0, 72%, 60%)', border: 'hsla(0, 72%, 50%, 0.3)' },
+    correcao: { bg: 'hsla(45, 95%, 50%, 0.12)', text: 'hsl(45, 95%, 55%)', border: 'hsla(45, 95%, 50%, 0.3)' },
   };
 
   return (
@@ -851,12 +912,14 @@ const handleEditUser = async () => {
                 </div>
                 <div className="rounded-xl p-6" style={{ background: colors.cardBg, border: `1px solid ${colors.cardBorder}` }}>
                   <h3 className="text-sm mb-4" style={{ color: colors.textPrimary }}>Submissões por Área</h3>
-                  {(metrics?.por_area || []).map((a, i) => (
-                    <div key={i} className="flex justify-between py-2 px-3 rounded-lg" style={{ background: `${colors.cardBorder}` }}>
-                      <span style={{ color: colors.textPrimary }}>{a.area}</span>
-                      <span style={{ color: accentBlue }}>{a.total}</span>
-                    </div>
-                  ))}
+                  <div className="space-y-2">
+                    {(metrics?.por_area || []).map((a, i) => (
+                      <div key={i} className="flex justify-between py-2 px-3 rounded-lg" style={{ background: `${colors.cardBorder}` }}>
+                        <span style={{ color: colors.textPrimary }}>{a.area}</span>
+                        <span style={{ color: accentBlue }}>{a.total}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </>
@@ -950,6 +1013,9 @@ const handleEditUser = async () => {
                           <button onClick={() => { setEditUser(u); setUserDialog(true); }} className="mr-2" style={{ color: accentBlue }}>
                             <Pencil className="h-4 w-4" />
                           </button>
+                          <button onClick={() => { setResetSenhaUser(u); setResetSenhaDialog(true); }} className="mr-2" style={{ color: accentOrange }} title="Resetar Senha">
+                            <KeyRound className="h-4 w-4" />
+                          </button>
                           <button onClick={() => handleDeleteUser(u.id, u.nome)} style={{ color: 'hsl(0, 72%, 60%)' }}>
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -973,6 +1039,7 @@ const handleEditUser = async () => {
           <SelectItem value="pendente">Pendentes</SelectItem>
           <SelectItem value="aprovado">Aprovadas</SelectItem>
           <SelectItem value="reprovado">Reprovadas</SelectItem>
+          <SelectItem value="correcao">Correção</SelectItem>
         </SelectContent>
       </Select>
       <Select value={cursoFilter} onValueChange={setCursoFilter}>
@@ -1032,14 +1099,26 @@ const handleEditUser = async () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className="mb-2" style={{ color: colors.textPrimary }}>Descrição: {sub.descricao || '-'}</p>
-                          <div className="flex gap-2">
-                            <Button onClick={() => handleStatusChange(sub.id, 'reprovado')} style={{ background: 'hsla(0, 72%, 50%, 0.2)', color: 'hsl(0, 72%, 60%)' }}>
-                              <X className="h-4 w-4 mr-2" /> Reprovar
-                            </Button>
-                            <Button onClick={() => handleStatusChange(sub.id, 'aprovado')} style={{ background: 'hsla(152, 60%, 40%, 0.2)', color: 'hsl(152, 60%, 55%)' }}>
-                              <Check className="h-4 w-4 mr-2" /> Aprovar
-                            </Button>
-                          </div>
+                          {(sub.status === 'pendente' || sub.status === 'correcao') ? (
+                            <div className="flex gap-2 flex-wrap">
+                              <Button onClick={() => handleStatusChange(sub.id, 'reprovado')} style={{ background: 'hsla(0, 72%, 50%, 0.2)', color: 'hsl(0, 72%, 60%)' }}>
+                                <X className="h-4 w-4 mr-2" /> Reprovar
+                              </Button>
+                              <Button onClick={() => openCorrecaoDialog(sub)} style={{ background: 'hsla(45, 95%, 50%, 0.2)', color: 'hsl(45, 95%, 55%)' }}>
+                                <AlertTriangle className="h-4 w-4 mr-2" /> Correção
+                              </Button>
+                              <Button onClick={() => handleStatusChange(sub.id, 'aprovado')} style={{ background: 'hsla(152, 60%, 40%, 0.2)', color: 'hsl(152, 60%, 55%)' }}>
+                                <Check className="h-4 w-4 mr-2" /> Aprovar
+                              </Button>
+                            </div>
+                          ) : (
+                            <p className="text-sm" style={{ color: colors.labelColor }}>
+                              {sub.status === 'aprovado'
+                                ? `✅ Aprovado em ${sub.data_validacao ? new Date(sub.data_validacao).toLocaleDateString() : '—'}`
+                                : `❌ Reprovado em ${sub.data_validacao ? new Date(sub.data_validacao).toLocaleDateString() : '—'}`
+                              }
+                            </p>
+                          )}
                         </div>
                         <div>
                           {loadingCert ? (
@@ -1588,6 +1667,68 @@ Equipe SENAC`;
 </DialogFooter>
   </DialogContent>
 </Dialog>
+
+      {/* Dialog: Solicitar Correção */}
+      <Dialog open={correcaoDialog} onOpenChange={setCorrecaoDialog}>
+        <DialogContent style={{ background: colors.panelBg }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: colors.textPrimary }}>Solicitar Correção</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: colors.labelColor }}>
+              Aluno: <span style={{ color: colors.textPrimary }}>{correcaoSubmissao?.aluno_nome}</span>
+            </p>
+            <div>
+              <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Observação para o aluno</label>
+              <Textarea
+                placeholder="Descreva o que precisa ser corrigido..."
+                value={correcaoObs}
+                onChange={e => setCorrecaoObs(e.target.value)}
+                rows={4}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setCorrecaoDialog(false)} variant="outline">Cancelar</Button>
+            <Button onClick={handleCorrecao} style={{ background: 'hsl(45, 95%, 50%)', color: 'black' }}>
+              Solicitar Correção
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Resetar Senha */}
+      <Dialog open={resetSenhaDialog} onOpenChange={setResetSenhaDialog}>
+        <DialogContent style={{ background: colors.panelBg }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: colors.textPrimary }}>Resetar Senha</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg" style={{ background: 'hsla(45, 95%, 50%, 0.1)', border: '1px solid hsla(45, 95%, 50%, 0.3)' }}>
+              <p className="text-sm flex items-center gap-2" style={{ color: 'hsl(45, 95%, 60%)' }}>
+                <AlertTriangle className="h-4 w-4" />
+                Atenção: Uma nova senha será gerada e enviada para o email do usuário.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm" style={{ color: colors.labelColor }}>
+                Usuário: <span style={{ color: colors.textPrimary }}>{resetSenhaUser?.nome}</span>
+              </p>
+              <p className="text-sm" style={{ color: colors.labelColor }}>
+                Email: <span style={{ color: accentBlue }}>{resetSenhaUser?.email}</span>
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setResetSenhaDialog(false)} variant="outline">Cancelar</Button>
+            <Button onClick={handleResetSenha} disabled={resetSenhaLoading} style={{ background: accentOrange }}>
+              <KeyRound className="h-4 w-4 mr-2" />
+              {resetSenhaLoading ? 'Resetando...' : 'Resetar Senha'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/versi/Documents/GitHub/PWA -type f -name *.js -o -name *.jsx -o -name *.ts -o -name *.tsx -o -name *.json)",
+      "Bash(bun add:*)",
+      "Bash(bun run:*)",
+      "Bash(timeout 8 bun dev)",
+      "Bash(npm run:*)",
+      "Bash(dir \"C:\\\\Users\\\\versi\\\\Documents\\\\GitHub\\\\PWA\\\\src\\\\hooks\")",
+      "Bash(npx tsc:*)",
+      "Bash(bun x:*)",
+      "Bash(npx prettier:*)",
+      "Bash(find . -name *.md -type f)",
+      "Bash(find C:/Users/versi/Documents/GitHub/PWA/src -name useapptheme* -o -name themeswitcher* -o -name ThemeSwitcher*)",
+      "Bash(grep:*)"
+    ]
+  }
+}

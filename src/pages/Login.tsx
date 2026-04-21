@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Mail, Lock, LogIn, ClipboardList, GraduationCap, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, LogIn, ClipboardList, GraduationCap, ShieldCheck, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import logoWhite from '@/assets/logo-white.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppTheme } from '@/hooks/useapptheme';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { API_CONFIG } from '@/data/data';
 
 const roleConfig: Record<string, { label: string; icon: typeof ClipboardList; glowColor: string; borderColor: string; iconColor: string; accentGradient: string; redirectPath: string; perfil: string }> = {
   superadmin: {
@@ -48,6 +52,9 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [forgotDialog, setForgotDialog] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const config = roleConfig[role || ''];
   
@@ -96,6 +103,36 @@ const Login = () => {
     toast.success('Bem-vindo ao Maestria!');
     navigate(config.redirectPath);
     setIsSubmitting(false);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
+      toast.error('Digite um e-mail válido.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim().toLowerCase() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.mensagem || data.error || 'Erro ao solicitar recuperação.');
+      }
+
+      toast.success('Se o e-mail estiver cadastrado, você receberá instruções para redefinir sua senha.');
+      setForgotDialog(false);
+      setForgotEmail('');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao solicitar recuperação de senha.');
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   return (
@@ -203,6 +240,15 @@ const Login = () => {
           </div>
 
           <button
+            type="button"
+            onClick={() => setForgotDialog(true)}
+            className="w-full text-left text-xs transition-colors hover:underline"
+            style={{ color: config.iconColor }}
+          >
+            Esqueci minha senha
+          </button>
+
+          <button
             type="submit"
             disabled={isSubmitting}
             className="w-full py-3 rounded-lg text-sm font-display font-semibold uppercase tracking-widest flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] hover:brightness-110 disabled:opacity-50"
@@ -224,6 +270,50 @@ const Login = () => {
       <p className="mt-10 text-xs tracking-widest uppercase font-display relative z-10" style={{ color: tc.footerColor }}>
         Sistema de Gestão de Atividades Complementares
       </p>
+
+      {/* Dialog: Esqueci minha senha */}
+      <Dialog open={forgotDialog} onOpenChange={setForgotDialog}>
+        <DialogContent style={{ background: tc.panelBg || tc.cardBg }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: tc.titleColor }} className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" style={{ color: config.iconColor }} />
+              Recuperar Senha
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: tc.labelColor }}>
+             Digite seu e-mail cadastrado. Enviaremos instruções para redefinir sua senha.
+            </p>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: config.iconColor, opacity: 0.6 }} />
+              <Input
+                type="email"
+                placeholder="seu@email.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="pl-10"
+                style={{
+                  background: tc.inputBg,
+                  border: `1px solid ${tc.inputBorder}`,
+                  color: tc.textPrimary,
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setForgotDialog(false)} variant="outline">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleForgotPassword}
+              disabled={forgotLoading}
+              style={{ background: config.accentGradient }}
+            >
+              {forgotLoading ? 'Enviando...' : 'Enviar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
