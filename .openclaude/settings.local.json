@@ -12,7 +12,10 @@
       "Bash(npx prettier:*)",
       "Bash(find . -name *.md -type f)",
       "Bash(find C:/Users/versi/Documents/GitHub/PWA/src -name useapptheme* -o -name themeswitcher* -o -name ThemeSwitcher*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(\"C:\\\\Users\\\\versi\\\\Documents\\\\GitHub\\\\PWA\\\\docs\\\\COMPONENT-CATALOG.md\":*)",
+      "Bash(powershell -Command \"New-Item -ItemType Directory -Force -Path 'C:\\\\Users\\\\versi\\\\Documents\\\\GitHub\\\\PWA\\\\docs'\")",
+      "Bash(find src/ -type f \\\\\\(-name *.js -o -name *.jsx -o -name *.ts -o -name *.tsx \\\\\\))"
     ]
   }
 }

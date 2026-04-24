@@ -1,200 +1,273 @@
-# Rotas Completas do Backend - SGC
+# Fluxo de Autenticação - Frontend
 
-**Data:** 2026-04-14
+Este documento documenta o fluxo completo de autenticação, chaves localStorage e mapa de rotas do frontend.
 
-## Base URL
-https://back-end-banco-five.vercel.app
+---
 
-text
+## Fluxo de Autenticação
 
-## 🔐 Autenticação
+### 1. Login
 
-### POST /api/auth/login
-**Body:**
-```json
-{
-  "email": "admin@admin.com",
-  "senha": "admin123"
+```
+Usuário → Login Page → AuthContext.signIn()
+                ↓
+        POST /api/auth/login
+                ↓
+        { success, token, refreshToken, usuario }
+                ↓
+        Salva no localStorage
+                ↓
+        Atualiza estado (token, user)
+                ↓
+        Redireciona para rota protegida
+```
+
+### 2. Refresh Automático de Token
+
+```
+A cada 45 minutos → refreshAccessToken()
+                ↓
+        POST https://securetoken.googleapis.com/v1/token
+                ↓
+        { id_token, refresh_token }
+                ↓
+        Atualiza localStorage e estado
+                ↓
+        Se falhar → signOut()
+```
+
+### 3. Logout
+
+```
+Usuário → signOut()
+                ↓
+        Remove todas as chaves do localStorage
+                ↓
+        Limpa estado (token, user)
+                ↓
+        Redireciona para home
+```
+
+### 4. Verificação de Rota Protegida
+
+```
+Acesso à rota → ProtectedRoute
+                ↓
+        loading? → Spinner
+                ↓
+        !user? → Redireciona para login do perfil
+                ↓
+        allowedRoles && !allowedRoles.includes(user.perfil)?
+                ↓
+        Redireciona para rota do perfil
+                ↓
+        Renderiza children
+```
+
+---
+
+## Chaves localStorage
+
+### Chaves Principais
+
+| Chave | Tipo | Descrição | Onde é definida |
+|-------|------|-----------|-----------------|
+| `token` | string | Token de acesso JWT | AuthContext.signIn() |
+| `refreshToken` | string | Token de refresh do Firebase | AuthContext.signIn() |
+| `usuario` | JSON | Dados do usuário logado | AuthContext.signIn() |
+
+### Chaves de Compatibilidade (Admin)
+
+| Chave | Tipo | Descrição | Onde é definida |
+|-------|------|-----------|-----------------|
+| `authToken` | string | Cópia do token (compatibilidade Admin) | AuthContext.signIn() |
+| `userData` | JSON | Cópia dos dados do usuário (compatibilidade Admin) | AuthContext.signIn() |
+| `tokenExpiry` | string | Timestamp de expiração (24h) | AuthContext.signIn() |
+| `userEmail` | string | Email do usuário (removido no logout) | - |
+
+### Chaves de Sessão (SessionStorage)
+
+| Chave | Tipo | Descrição | Onde é definida |
+|-------|------|-----------|-----------------|
+| `welcomed_admin` | string | Flag de boas-vindas do Admin | Admin.tsx |
+
+---
+
+## Mapa Completo de Rotas
+
+### Rotas Públicas
+
+| Rota | Componente | Descrição |
+|------|------------|-----------|
+| `/` | Index | Página inicial (seleção de perfil) |
+| `/login/:role` | Login | Página de login com parâmetro de role |
+| `/login` | Navigate | Redireciona para `/` |
+
+### Rotas Protegidas
+
+| Rota | Componente | Perfis Permitidos | Descrição |
+|------|------------|-------------------|-----------|
+| `/coordenador/*` | Coordenador | `coordenador`, `super_admin` | Painel do coordenador |
+| `/aluno/*` | Aluno | `aluno` | Painel do aluno |
+| `/admin/*` | Admin | `super_admin` | Painel do administrador |
+
+### Rota de Erro
+
+| Rota | Componente | Descrição |
+|------|------------|-----------|
+| `*` | NotFound | Página 404 |
+
+---
+
+## Perfis de Usuário
+
+| Perfil | Rota de Login | Rota Principal | Acesso a |
+|--------|--------------|----------------|-----------|
+| `super_admin` | `/login/superadmin` | `/admin/*` | Todas as rotas |
+| `coordenador` | `/login/coordenador` | `/coordenador/*` | `/coordenador/*` |
+| `aluno` | `/login/aluno` | `/aluno/*` | `/aluno/*` |
+
+---
+
+## Componentes de Autenticação
+
+### AuthContext
+
+**Localização:** `src/contexts/AuthContext.tsx`
+
+**Interface:**
+```typescript
+interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signOut: () => void;
 }
-Response:
+```
 
-json
-{
-  "success": true,
-  "token": "eyJhbGci...",
-  "refreshToken": "...",
-  "usuario": {
-    "uid": "xxx",
-    "nome": "Admin",
-    "email": "admin@admin.com",
-    "perfil": "super_admin",
-    "curso_id": null
-  }
+**Funcionalidades:**
+- Carrega dados do localStorage ao inicializar
+- Renova token automaticamente a cada 45 minutos
+- Faz login via API
+- Faz logout removendo todas as chaves
+
+### ProtectedRoute
+
+**Localização:** `src/components/ProtectedRoute.tsx`
+
+**Props:**
+```typescript
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRoles?: UserPerfil[];
 }
-👥 Usuários
-Método	Rota	Perfil
-GET	/api/usuarios	super_admin, coordenador
-POST	/api/usuarios	super_admin, coordenador
-PATCH	/api/usuarios/:id	super_admin, coordenador
-DELETE	/api/usuarios/:id	super_admin, coordenador
-POST /api/usuarios
-json
-{
-  "nome": "João Silva",
-  "email": "joao@email.com",
-  "senha": "123456",
-  "perfil": "aluno",
-  "matricula": "2024001",
-  "curso_id": "abc123"
-}
-DELETE /api/usuarios/:id
-Proteções:
+```
 
-Não exclui último super_admin
+**Comportamento:**
+1. Exibe spinner enquanto carrega
+2. Redireciona para login do perfil se não autenticado
+3. Redireciona para rota do perfil se não tiver permissão
+4. Renderiza children se autenticado e autorizado
 
-Remove vínculos automaticamente
+---
 
-📚 Cursos
-Método	Rota	Perfil
-GET	/api/cursos	Todos
-POST	/api/cursos	super_admin
-PATCH	/api/cursos/:id	super_admin
-DELETE	/api/cursos/:id	super_admin
-PATCH /api/cursos/:id
-json
-{
-  "nome": "Novo Nome",
-  "carga_horaria_minima": 250
-}
-DELETE /api/cursos/:id
-Proteção: Não exclui se houver alunos ou coordenadores vinculados
+## Endpoints de Autenticação
 
-📏 Regras de Atividades
-Método	Rota	Perfil
-GET	/api/regras	Todos
-POST	/api/regras	super_admin
-PATCH	/api/regras/:id	super_admin
-DELETE	/api/regras/:id	super_admin
-POST /api/regras
-json
-{
-  "area": "Extensão",
-  "limite_horas": 60,
-  "exige_comprovante": true,
-  "curso_id": "abc123"
-}
-DELETE /api/regras/:id
-Proteção: Não exclui se houver submissões vinculadas
+### Login
 
-📤 Submissões
-Método	Rota	Perfil
-GET	/api/submissoes	Todos
-POST	/api/submissoes	aluno
-PATCH	/api/submissoes/:id	super_admin, coordenador
-POST /api/submissoes
-json
-{
-  "regra_id": "regra123",
-  "tipo": "Curso Online",
-  "descricao": "Curso de React",
-  "carga_horaria_solicitada": 40
-}
-PATCH /api/submissoes/:id
-json
-{
-  "status": "aprovado"  // ou "reprovado"
-}
-📜 Certificados
-Método	Rota	Perfil
-GET	/api/certificados	Todos
-POST	/api/certificados	aluno
-POST /api/certificados
-Content-Type: multipart/form-data
+| Método | URL | Body | Response |
+|--------|-----|------|----------|
+| POST | `/api/auth/login` | `{ email, senha }` | `{ success, token, refreshToken, usuario }` |
 
-text
-submissao_id: "sub123"
-arquivo: [FILE]
-🔗 Vínculos Coordenador-Curso
-Método	Rota	Perfil
-GET	/api/coordenadores-cursos	super_admin
-POST	/api/coordenadores-cursos	super_admin
-DELETE	/api/coordenadores-cursos/:id	super_admin
-🎓 Vínculos Aluno-Curso
-Método	Rota	Perfil
-GET	/api/alunos-cursos	Todos
-POST	/api/alunos-cursos	super_admin, coordenador
-DELETE	/api/alunos-cursos/:id	super_admin, coordenador
-📊 Dashboard
-GET /api/dashboard/coordenador
-Perfil: super_admin, coordenador
-Response:
+### Refresh Token (Firebase)
 
-json
-{
-  "success": true,
-  "metricas": {
-    "total_submissoes": 25,
-    "pendentes": 10,
-    "aprovadas": 12,
-    "reprovadas": 3,
-    "por_area": [...],
-    "por_curso": [...]
-  }
-}
-GET /api/dashboard/aluno
-Perfil: aluno
-Response:
+| Método | URL | Body | Response |
+|--------|-----|------|----------|
+| POST | `https://securetoken.googleapis.com/v1/token?key={FIREBASE_KEY}` | `grant_type=refresh_token&refresh_token={token}` | `{ id_token, refresh_token }` |
 
-json
-{
-  "success": true,
-  "metricas": {
-    "total_submissoes": 5,
-    "pendentes": 2,
-    "aprovadas": 2,
-    "reprovadas": 1,
-    "total_horas_aprovadas": 80,
-    "carga_horaria_minima": 200,
-    "progresso_percentual": 40
-  }
-}
-⚙️ Configurações (🆕)
-Método	Rota	Perfil
-GET	/api/configuracoes/:id	super_admin
-POST	/api/configuracoes/:id	super_admin
-POST	/api/configuracoes/test-email	super_admin
-GET /api/configuracoes/email_config
-Response:
+---
 
-json
-{
-  "success": true,
-  "config": {
-    "host": "smtp.gmail.com",
-    "port": 587,
-    "user": "email@gmail.com",
-    "pass": "****",
-    "from": "SGC <email@gmail.com>",
-    "ativo": true
-  }
-}
-POST /api/configuracoes/email_config
-Body: (mesmo formato acima)
+## Diagrama de Fluxo
 
-POST /api/configuracoes/test-email
-json
-{
-  "to": "teste@email.com"
-}
-📋 Coleções do Firestore
-Coleção	Descrição
-usuarios	Usuários do sistema
-cursos	Cursos cadastrados
-regras_atividade	Regras por curso
-submissoes	Submissões dos alunos
-atividades_complementares	Dados das atividades
-certificados	URLs e OCR
-coordenadores_cursos	Vínculos coord-curso
-alunos_cursos	Vínculos aluno-curso
-configuracoes	🆕 Configurações do sistema
-logs	Registro de ações
+```
+┌─────────────┐
+│   Index     │
+│  (Home)     │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│   Login     │
+│  (:role)    │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────────────┐
+│   AuthContext.signIn()  │
+└──────┬──────────────────┘
+       │
+       ▼
+┌─────────────────────────┐
+│  POST /api/auth/login   │
+└──────┬──────────────────┘
+       │
+       ▼
+┌─────────────────────────┐
+│  Salva localStorage     │
+│  - token                │
+│  - refreshToken         │
+│  - usuario              │
+│  - authToken (compat)    │
+│  - userData (compat)    │
+│  - tokenExpiry          │
+└──────┬──────────────────┘
+       │
+       ▼
+┌─────────────────────────┐
+│  ProtectedRoute         │
+│  (verifica perfil)      │
+└──────┬──────────────────┘
+       │
+       ▼
+┌─────────────────────────┐
+│  Rota Protegida         │
+│  (/admin/*)             │
+│  (/coordenador/*)       │
+│  (/aluno/*)             │
+└─────────────────────────┘
+       │
+       │ (a cada 45min)
+       ▼
+┌─────────────────────────┐
+│  refreshAccessToken()   │
+└──────┬──────────────────┘
+       │
+       ▼
+┌─────────────────────────┐
+│  Firebase Token API      │
+└──────┬──────────────────┘
+       │
+       ▼
+┌─────────────────────────┐
+│  Atualiza localStorage  │
+└─────────────────────────┘
+```
+
+---
+
+## Notas Importantes
+
+### Compatibilidade
+- O sistema mantém chaves duplicadas (`token`/`authToken`, `usuario`/`userData`) para compatibilidade com o componente Admin
+- O ProtectedRoute verifica ambas as chaves ao determinar o perfil para redirecionamento
+
+### Segurança
+- Tokens são armazenados no localStorage (não seguro para produção, considerar cookies httpOnly)
+- Refresh automático evita expiração de sessão durante uso
+- Logout remove todas as chaves para evitar sessões residuais
+
+### Firebase
+- Utiliza Firebase Authentication para refresh de tokens
+- Requer `FIREBASE_KEY` configurada em `API_CONFIG`
+- Tokens do Firebase duram 60 minutos, refresh ocorre aos 45 minutos

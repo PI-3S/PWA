@@ -1,196 +1,337 @@
-# Catálogo de Componentes - SGC
+# Catálogo de Componentes - Páginas do Sistema
 
-**Data:** 2026-04-21 (ATUALIZADO)
-
-## Páginas (src/pages/)
-
-### Index.tsx
-- **Rota:** `/`
-- **Função:** Tela de seleção de perfil de acesso
-- **Dependências:** lucide-react, react-router-dom
-- **UI:** 3 cards com ícones (ShieldCheck, ClipboardList, GraduationCap)
-- **Navega para:** `/login/:role`
-
-### Login.tsx
-- **Rota:** `/login/:role`
-- **Função:** Formulário de login com validação de perfil
-- **Dependências:** AuthContext, sonner, react-router-dom
-- **Roles suportados:** superadmin, coordenador, aluno
-- **Features:** 
-  - Login com validação de perfil
-  - **Esqueci minha senha** com Dialog + integração `/api/auth/forgot-password`
-- **Fluxo:** signIn -> valida perfil -> redireciona
-
-### Admin.tsx (~1730 linhas)
-- **Rota:** `/admin/*`
-- **Função:** Painel administrativo completo
-- **Seções:**
-  - Dashboard com métricas e gráficos
-  - Gestão de Cursos (CRUD completo)
-  - Gestão de Usuários (CRUD + gerador de senha + email)
-  - Validação de Submissões (aprovar/reprovar/correção)
-  - Regras de Atividades (CRUD completo)
-  - Vínculos Coordenador-Curso
-  - **Configurações** (email SMTP + sistema + cores)
-- **Dependências:** AuthContext, useAppTheme, lucide-react, shadcn/ui, sonner
-- **Features:**
-  - Enrichment de dados via chamadas paralelas
-  - Mapeamento robusto com fallbacks
-  - Gerador de senha forte (12 chars + símbolos)
-  - Modal de confirmação com copy/email
-  - Teste de email SMTP
-
-### Coordenador.tsx (~550 linhas)
-- **Rota:** `/coordenador/*`
-- **Função:** Painel do coordenador de curso
-- **Seções:** dashboard, submissões, alunos, cadastrar
-- **Dependências:** AuthContext, useAppTheme, useIsMobile, lucide-react, shadcn/ui, sonner
-- **Features:**
-  - Dashboard com métricas por curso
-  - Validação de submissões (aprovar/reprovar/correção)
-  - Cadastro de novos alunos
-  - Cálculo de progresso por aluno
-  - Layout responsivo mobile/desktop
-  - **Enrichment de dados** via chamadas paralelas (usuários, cursos, regras)
-
-### Aluno.tsx (~670 linhas)
-- **Rota:** `/aluno/*`
-- **Função:** Painel do aluno
-- **Seções:** progresso, nova submissão, histórico
-- **Dependências:** AuthContext, useAppTheme, useIsMobile, lucide-react, shadcn/ui, sonner
-- **Features:**
-  - Seletor de curso
-  - Dashboard de progresso com barra visual
-  - Horas por área com limites
-  - **Upload de certificado redesenhado:**
-    - Drag-and-drop funcional
-    - Aviso de limite 4MB
-    - Feedback visual claro
-    - Botão para remover/trocar arquivo
-  - Histórico de submissões com status
-  - Observações de correção visíveis
-  - Layout ocupando tela inteira
-
-### NotFound.tsx
-- **Rota:** `*` (fallback)
-- **Função:** Página 404 simples
+Este documento cataloga todas as seções, endpoints e funcionalidades das páginas principais do sistema.
 
 ---
 
-## Componentes de Négocio (src/components/)
+## 1. Admin.tsx
 
-### ProtectedRoute.tsx
-- **Uso:** Wrapper de rotas protegidas
-- **Props:** `children`, `allowedRoles?`
-- **Função:** verifica auth + perfil antes de renderizar
-- **Acessa localStorage:** `authToken`, `token`, `usuario`, `userData`
+**Linhas:** 1.737
 
-### NavLink.tsx [ÓRFÃO]
-- **Uso:** Nenhum
-- **Função:** Wrapper do NavLink do React Router com activeClassName
-- **Status:** Não utilizado em nenhum lugar
+### Seções/Abas
 
-### FilterBar.tsx [ÓRFÃO/QUEBRADO]
-- **Imports quebrados:** `ActivityCategory`, `categoryLabels` de data.ts
-- **Função original:** Barra de filtros com busca + selects
+| ID | Label | Ícone | Descrição |
+|----|-------|-------|-----------|
+| `dashboard` | Dashboard | LayoutDashboard | Visão geral com métricas do sistema |
+| `courses` | Gestão de Cursos | BookOpen | CRUD de cursos |
+| `users` | Gestão de Usuários | Users | CRUD de usuários (alunos e coordenadores) |
+| `validation` | Validacao | FileCheck | Validação de submissões |
+| `rules` | Regras de Atividades | ScrollText | CRUD de regras de atividades |
+| `coordinators` | Coordenadores | Link2 | Vínculos entre coordenadores e cursos |
+| `settings` | Configurações | Settings | Configurações de email e sistema |
 
-### StatusCards.tsx [ÓRFÃO]
-- **Uso:** Nenhum
-- **Função:** 4 cards de status (pendentes, deferidas, indeferidas, ajustes)
+### Endpoints Chamados
 
-### SubmissionQueue.tsx [ÓRFÃO/QUEBRADO]
-- **Imports quebrados:** `Submission`, `categoryLabels` de data.ts
-- **Função original:** Tabela de submissões com status
+#### Dashboard
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/dashboard/coordenador` | - |
 
-### EvaluationDialog.tsx [ÓRFÃO/QUEBRADO]
-- **Imports quebrados:** `Submission`, `categoryLabels`, `ActivityCategory` de data.ts
-- **Função original:** Dialog de avaliação de atividades com comparativo de horas
+#### Cursos
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/cursos` | - |
+| POST | `/api/cursos` | `{ nome, carga_horaria_minima }` |
+| PATCH | `/api/cursos/{id}` | `{ nome, carga_horaria_minima }` |
+| DELETE | `/api/cursos/{id}` | - |
+
+#### Usuários
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/usuarios?perfil={perfil}` | - |
+| POST | `/api/usuarios` | `{ nome, email, senha, perfil, matricula, curso_id }` |
+| PATCH | `/api/usuarios/{id}` | `{ nome, email, matricula, curso_id, perfil }` |
+| PUT | `/api/usuarios/{id}` | `{ nome, email, matricula, curso_id, perfil }` (fallback) |
+| DELETE | `/api/usuarios/{id}` | - |
+| POST | `/api/usuarios/{id}/reset-senha` | - |
+
+#### Submissões
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/submissoes` | - |
+| PATCH | `/api/submissoes/{id}` | `{ status }` ou `{ status, observacao }` |
+
+#### Regras
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/regras` | - |
+| POST | `/api/regras` | `{ area, limite_horas, exige_comprovante, curso_id }` |
+| PATCH | `/api/regras/{id}` | `{ area, limite_horas, exige_comprovante, curso_id }` |
+| DELETE | `/api/regras/{id}` | - |
+
+#### Coordenadores-Cursos
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/coordenadores-cursos` | - |
+| POST | `/api/coordenadores-cursos` | `{ usuario_id, curso_id }` |
+| DELETE | `/api/coordenadores-cursos/{id}` | - |
+
+#### Certificados
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/certificados?submissao_id={id}` | - |
+
+#### Configurações
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/configuracoes/email_config` | - |
+| POST | `/api/configuracoes/email_config` | `{ host, port, secure, user, pass, from, ativo }` |
+| GET | `/api/configuracoes/sistema_config` | - |
+| POST | `/api/configuracoes/sistema_config` | `{ nome_sistema, instituicao, logo_url, frontend_url, cor_primaria, cor_secundaria }` |
+| POST | `/api/configuracoes/test-email` | `{ to }` |
+
+### Funcionalidades por Seção
+
+#### Dashboard
+- Exibe métricas: total de submissões, pendentes, aprovadas, reprovadas
+- Gráfico de submissões por curso
+- Lista de submissões por área
+
+#### Gestão de Cursos
+- Listar todos os cursos
+- Criar novo curso (nome + carga horária mínima)
+- Editar curso existente
+- Excluir curso
+
+#### Gestão de Usuários
+- Busca por nome/email
+- Filtro por perfil (aluno/coordenador)
+- Criar novo usuário com geração de senha forte automática
+- Editar usuário existente
+- Excluir usuário
+- Resetar senha (envia nova senha por email)
+- Modal de confirmação com credenciais após criação
+- Opção de copiar credenciais para clipboard
+- Opção de enviar credenciais por email
+
+#### Validação
+- Filtro por status (todos, pendente, aprovado, reprovado, correção)
+- Filtro por curso
+- Expandir detalhes da submissão
+- Visualizar certificado anexado (link externo)
+- Visualizar texto extraído via OCR
+- Aprovar submissão
+- Reprovar submissão
+- Solicitar correção (com observação obrigatória)
+
+#### Regras de Atividades
+- Listar todas as regras
+- Criar nova regra (área, limite de horas, exige comprovante, curso)
+- Editar regra existente
+- Excluir regra
+- Badge indicando se exige comprovante
+
+#### Coordenadores
+- Listar vínculos coordenador-curso
+- Criar novo vínculo
+- Remover vínculo
+
+#### Configurações
+- **Email:**
+  - Configurar servidor SMTP (host, porta)
+  - Configurar credenciais (email remetente, senha de app)
+  - Configurar nome do remetente
+  - Ativar/desativar envio de emails
+  - Testar envio de email
+- **Sistema:**
+  - Nome do sistema
+  - Nome da instituição
+  - URL do frontend
+  - URL da logo
+  - Cor primária (HSL)
+  - Cor secundária (HSL)
 
 ---
 
-## Componentes UI (src/components/ui/)
+## 2. Coordenador.tsx
 
-Componentes shadcn/ui padrão (35+ arquivos):
-- accordion, alert-dialog, alert, aspect-ratio, avatar, badge, breadcrumb
-- button, calendar, card, carousel, chart, checkbox, collapsible
-- command, context-menu, dialog, drawer, dropdown-menu, form
-- hover-card, input-otp, input, label, menubar, navigation-menu
-- pagination, popover, progress, radio-group, resizable, scroll-area
-- select, separator, sheet, sidebar, skeleton, slider, sonner
-- switch, table, tabs, textarea, toggle-group, toggle, tooltip, toast, toaster, use-toast
+**Linhas:** 834
+
+### Seções/Abas
+
+| ID | Label | Ícone | Descrição |
+|----|-------|-------|-----------|
+| `dashboard` | Dashboard | LayoutDashboard | Visão geral com métricas e fila de prioridade |
+| `submissoes` | Submissões | FileText | Lista e validação de submissões |
+| `alunos` | Alunos | Users | Lista de alunos com progresso |
+| `cadastrar` | Cadastrar | UserPlus | Cadastro de novos alunos |
+
+### Endpoints Chamados
+
+#### Dashboard
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/dashboard/coordenador` | - |
+
+#### Submissões
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/submissoes` | - |
+| GET | `/api/usuarios` | - |
+| GET | `/api/regras` | - |
+| GET | `/api/cursos` | - |
+| GET | `/api/certificados?submissao_id={id}` | - |
+| PATCH | `/api/submissoes/{id}` | `{ status, coordenador_id }` ou `{ status, coordenador_id, observacao }` |
+
+#### Alunos
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/usuarios?perfil=aluno` | - |
+| GET | `/api/cursos` | - |
+
+#### Cadastrar Aluno
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| POST | `/api/usuarios` | `{ nome, matricula, email, senha, curso_id, perfil: 'aluno' }` |
+
+### Funcionalidades por Seção
+
+#### Dashboard
+- Exibe 5 cards de métricas: Total, Pendentes, Aprovadas, Reprovadas, Total Alunos
+- Fila de prioridade com as 5 submissões pendentes mais recentes
+- Ações rápidas na fila: Aprovar, Correção, Reprovar
+
+#### Submissões
+- Filtro por curso
+- Filtro por status (todos, pendente, aprovado, reprovado, correção)
+- Tabela com: aluno, data, curso, horas, status
+- Expandir para ver detalhes:
+  - Nome do arquivo do certificado
+  - Link para abrir PDF
+  - Texto extraído via OCR
+  - Descrição da atividade
+  - Observação de correção (se aplicável)
+- Ações: Aprovar Horas, Correção, Reprovar
+- Modal de correção com observação obrigatória
+
+#### Alunos
+- Lista de alunos com: nome, matrícula, curso, progresso
+- Barra de progresso visual (horas aprovadas / carga mínima)
+- Cálculo automático de progresso baseado em submissões aprovadas
+
+#### Cadastrar
+- Formulário de cadastro de aluno:
+  - Nome completo
+  - Matrícula
+  - Curso (dropdown)
+  - Email institucional
+  - Senha temporária
+- Validação de campos obrigatórios
 
 ---
 
-## Hooks Personalizados (src/hooks/)
+## 3. Aluno.tsx
 
-### useAppTheme.ts
-- **Uso:** Retorna `colors` e `toggleTheme`
-- **Estado:** tema atual (salvo em localStorage)
-- **Função:** Gerenciar cores dinâmicas do app
+**Linhas:** 724
 
-### use-mobile.tsx
-- **Uso:** Retorna `isMobile: boolean`
-- **Breakpoint:** 768px
-- **Função:** Responsividade condicional
+### Seções/Abas
+
+| ID | Label | Ícone | Descrição |
+|----|-------|-------|-----------|
+| `progress` | Meu Progresso | BarChart3 | Dashboard pessoal com métricas |
+| `submit` | Nova Submissão | Send | Envio de atividades e certificados |
+| `history` | Histórico | FileText | Lista de submissões anteriores |
+
+### Endpoints Chamados
+
+#### Cursos
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/alunos-cursos` | - |
+
+#### Dashboard
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/dashboard/aluno?curso_id={id}` | - |
+| GET | `/api/dashboard/aluno` | - |
+
+#### Regras
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/regras?curso_id={id}` | - |
+
+#### Submissões
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| GET | `/api/submissoes` | - |
+| POST | `/api/submissoes` | `{ regra_id, tipo, descricao, carga_horaria_solicitada }` |
+
+#### Certificados
+| Método | URL | Campos Enviados |
+|--------|-----|-----------------|
+| POST | `/api/certificados` | `FormData: { submissao_id, arquivo }` |
+
+### Funcionalidades por Seção
+
+#### Meu Progresso
+- Seletor de curso (se aluno tiver múltiplos cursos)
+- Card de progresso principal:
+  - Horas aprovadas / carga horária mínima
+  - Barra de progresso visual
+  - Porcentagem completa
+- 4 cards de métricas: Total Envios, Pendentes, Aprovadas, Reprovadas
+- Horas por área:
+  - Lista de áreas com horas acumuladas
+  - Limite de horas por área
+  - Barra de progresso por área
+
+#### Nova Submissão
+- **Passo 1 - Dados da Atividade:**
+  - Seleção de área (baseada nas regras do curso)
+  - Campo de horas do certificado
+  - Descrição opcional
+  - Validação de campos obrigatórios
+- **Passo 2 - Enviar Certificado:**
+  - Área de drag-and-drop
+  - Suporte a clique para selecionar arquivo
+  - Formatos aceitos: PDF, JPG, PNG
+  - Limite de tamanho: 4 MB
+  - Preview do arquivo selecionado (nome e tamanho)
+  - Opção de remover e selecionar outro arquivo
+  - Botão para voltar ao passo 1
+  - Botão para finalizar envio
+
+#### Histórico
+- Tabela de submissões com: data, tipo, horas, status
+- Badges coloridos por status:
+  - Aprovado (verde)
+  - Reprovado (vermelho)
+  - Pendente (amarelo)
+  - Correção (amarelo escuro)
+- Linha extra para observação de correção (quando aplicável)
+- Exibe observação do coordenador com ícone de alerta
 
 ---
 
-## Contexts (src/contexts/)
+## Resumo de Linhas
 
-### AuthContext.tsx
-- **Exports:** `AuthProvider`, `useAuth`
-- **State:** `user`, `token`, `loading`
-- **Funções:** `signIn`, `signOut`, `refreshAccessToken`
-- **Refresh:** a cada 45 min via Firebase securetoken API
-- **Chaves localStorage:** `token`, `authToken`, `usuario`, `userData`, `refreshToken`, `tokenExpiry`
-
----
-
-## Serviços (src/services/)
-
-### api.ts [NÃO UTILIZADO]
-- `apiClient` com métodos: `get`, `post`, `patch`, `delete`
-- Lê `authToken` do localStorage automaticamente
-- **Nenhum componente usa este módulo diretamente**
-- **Nota:** Admin, Coordenador e Aluno usam fetch inline
+| Arquivo | Linhas |
+|---------|--------|
+| Admin.tsx | 1.737 |
+| Coordenador.tsx | 834 |
+| Aluno.tsx | 724 |
+| **Total** | **3.295** |
 
 ---
 
-## Dados (src/data/)
+## Notas Importantes
 
-### data.ts
-- Tipos: `UserPerfil`, `SubmissionStatus`, `User`, `Submission`
-- Config: `API_CONFIG` (BASE_URL, FIREBASE_KEY, ENDPOINTS)
-- Labels: `statusLabels`, `perfilLabels`
+### Autenticação
+- Todas as requisições incluem header `Authorization: Bearer {token}`
+- Verificação de token no localStorage ao carregar as páginas
+- Redirecionamento para login se token não encontrado
 
----
+### Tratamento de Erros
+- Toasts de sucesso/erro com estilo consistente
+- Tratamento de erros 401/403 com logout automático
+- Mapeamento robusto de campos da API com fallbacks
 
-## Utils (src/lib/)
+### Temas
+- Suporte a temas claro/escuro via hook `useAppTheme`
+- Cores dinâmicas baseadas no tema selecionado
+- ThemeSwitcher em todas as páginas
 
-### utils.ts
-- `cn(...inputs)` - utilitário para merge de classes Tailwind (clsx + twMerge)
-
-### themes.ts
-- Constantes de cores para temas (light/dark)
-- Usado por `useAppTheme` hook
-
----
-
-## Assets (src/assets/)
-
-- `logo-white.png` - Logo do sistema
-- `logo.svg` - Logo em vetores
-
----
-
-## Estatísticas
-
-| Categoria | Quantidade |
-|-----------|------------|
-| Páginas | 5 |
-| Componentes de Negócio | 6 (4 órfãos) |
-| Componentes UI (shadcn) | 35+ |
-| Hooks Personalizados | 2 |
-| Contexts | 1 |
-| Serviços | 1 (não usado) |
-| Linhas de Código | ~15,000 |
+### Responsividade
+- Sidebar adaptável para mobile
+- Tabelas com scroll horizontal em telas pequenas
+- Grids responsivos para cards de métricas
