@@ -1035,7 +1035,8 @@ const handleEditUser = async () => {
                 </Button>
               </div>
               <div className="rounded-xl overflow-hidden" style={{ background: colors.cardBg }}>
-                <table className="w-full">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[500px]">
                   <thead style={{ background: colors.tableHeaderBg }}>
                     <tr>
                       <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Nome/Email</th>
@@ -1070,6 +1071,7 @@ const handleEditUser = async () => {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           )}
@@ -1097,7 +1099,8 @@ const handleEditUser = async () => {
       </Select>
     </div>
     <div className="rounded-xl overflow-hidden" style={{ background: colors.cardBg }}>
-      <table className="w-full">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[600px]">
         <thead style={{ background: colors.tableHeaderBg }}>
           <tr>
             <th className="text-left px-5 py-3 text-xs" style={{ color: accentBlue }}>Aluno</th>
@@ -1200,6 +1203,7 @@ const handleEditUser = async () => {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 )}
@@ -1301,7 +1305,7 @@ const handleEditUser = async () => {
         Configurações de Email
       </h3>
       
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Servidor SMTP</label>
           <Input 
@@ -1361,17 +1365,17 @@ const handleEditUser = async () => {
         </div>
       </div>
       
-      <div className="flex gap-3 mt-6">
-        <Button 
-          onClick={saveEmailConfig} 
+      <div className="flex flex-col sm:flex-row gap-3 mt-6">
+        <Button
+          onClick={saveEmailConfig}
           disabled={loadingConfig}
           style={{ background: accentBlue }}
         >
           <Save className="h-4 w-4 mr-2" />
           {loadingConfig ? 'Salvando...' : 'Salvar Configurações'}
         </Button>
-        
-        <Button 
+
+        <Button
           onClick={testEmailConfig}
           disabled={testingEmail}
           variant="outline"
@@ -1386,15 +1390,15 @@ const handleEditUser = async () => {
         ⚠️ Para Gmail, use "smtp.gmail.com" na porta 587 e uma <strong>senha de app</strong>.
       </p>
     </div>
-    
+
     {/* Configurações do Sistema */}
     <div className="rounded-xl p-6" style={{ background: colors.cardBg, border: `1px solid ${colors.cardBorder}` }}>
       <h3 className="text-lg mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
         <Globe className="h-5 w-5" style={{ color: accentBlue }} />
         Configurações do Sistema
       </h3>
-      
-      <div className="grid grid-cols-2 gap-4">
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Nome do Sistema</label>
           <Input 
