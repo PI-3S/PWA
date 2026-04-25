@@ -140,7 +140,7 @@ const Index = () => {
         })}
       </div>
 
-      <p className="mt-16 text-xs tracking-widest uppercase font-display" style={{ color: ts.footerColor }}>
+      <p className="mt-16 text-center px-4 text-xs sm:text-sm tracking-widest uppercase font-display" style={{ color: ts.footerColor }}>
         Sistema de Gestão de Atividades Complementares
       </p>
     </div>

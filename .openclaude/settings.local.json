@@ -15,7 +15,8 @@
       "Bash(grep:*)",
       "Bash(\"C:\\\\Users\\\\versi\\\\Documents\\\\GitHub\\\\PWA\\\\docs\\\\COMPONENT-CATALOG.md\":*)",
       "Bash(powershell -Command \"New-Item -ItemType Directory -Force -Path 'C:\\\\Users\\\\versi\\\\Documents\\\\GitHub\\\\PWA\\\\docs'\")",
-      "Bash(find src/ -type f \\\\\\(-name *.js -o -name *.jsx -o -name *.ts -o -name *.tsx \\\\\\))"
+      "Bash(find src/ -type f \\\\\\(-name *.js -o -name *.jsx -o -name *.ts -o -name *.tsx \\\\\\))",
+      "Bash(npm install:*)"
     ]
   }
 }
