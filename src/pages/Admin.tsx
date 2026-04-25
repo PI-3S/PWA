@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_CONFIG } from '@/data/data';
 import logoWhite from '@/assets/logo-white.png';
+import Footer from '@/components/Footer';
 
 // --- MUDANÇA 1: Importação do hook de tema ---
 import { useAppTheme } from '@/hooks/useapptheme';
@@ -1481,6 +1482,8 @@ const handleEditUser = async () => {
   </div>
 )}
         </main>
+
+        <Footer />
       </div>
 
       {/* ─── DIALOGS ─────────────────────────────────────────────────────────── */}

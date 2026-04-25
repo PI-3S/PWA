@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { API_CONFIG } from '@/data/data';
 import logoWhite from '@/assets/logo-white.png';
+import Footer from '@/components/Footer';
 
 const API_BASE = API_CONFIG.BASE_URL;
 
@@ -811,6 +812,8 @@ const Coordenador = () => {
           )}
         </main>
       </div>
+
+      <Footer />
 
       {/* Modal de Correção */}
       <Dialog open={correcaoDialog} onOpenChange={setCorrecaoDialog}>

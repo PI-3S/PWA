@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { API_CONFIG } from '@/data/data';
+import Footer from '@/components/Footer';
 
 const roleConfig: Record<string, { label: string; icon: typeof ClipboardList; glowColor: string; borderColor: string; iconColor: string; accentGradient: string; redirectPath: string; perfil: string }> = {
   superadmin: {
@@ -270,7 +271,7 @@ const Login = () => {
       <p className="mt-10 text-xs tracking-widest uppercase font-display relative z-10" style={{ color: tc.footerColor }}>
         Sistema de Gestão de Atividades Complementares
       </p>
-
+      <Footer />
       {/* Dialog: Esqueci minha senha */}
       <Dialog open={forgotDialog} onOpenChange={setForgotDialog}>
         <DialogContent style={{ background: tc.panelBg || tc.cardBg }}>
