@@ -101,7 +101,6 @@ const Login = () => {
       return;
     }
 
-    toast.success('Bem-vindo ao Maestria!');
     navigate(config.redirectPath);
     setIsSubmitting(false);
   };

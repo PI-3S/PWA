@@ -17,7 +17,11 @@
       "Bash(powershell -Command \"New-Item -ItemType Directory -Force -Path 'C:\\\\Users\\\\versi\\\\Documents\\\\GitHub\\\\PWA\\\\docs'\")",
       "Bash(find src/ -type f \\\\\\(-name *.js -o -name *.jsx -o -name *.ts -o -name *.tsx \\\\\\))",
       "Bash(npm install:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(find C:/Users/versi/Documents/GitHub/PWA/src -name Admin.tsx -o -name Admin*.tsx)",
+      "Bash(find C:/Users/versi/Documents/GitHub/PWA/src -name *.ts -o -name *.js)",
+      "Bash(find C:/Users/versi/Documents/GitHub/PWA -name usuarios* -type f)",
+      "Bash(find C:/Users/versi/Documents/GitHub/PWA -name *.js -path */api/* -o -name *.js -path */routes/* -o -name *.ts -path */api/*)"
     ]
   }
 }
