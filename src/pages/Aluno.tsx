@@ -8,7 +8,7 @@ import ThemeSwitcher from '@/components/themeswitcher';
 import {
   LogOut, BarChart3, Send, FileText,
   Clock, CheckCircle2, XCircle, AlertTriangle,
-  CloudUpload, Upload, Menu, ChevronRight, Loader2
+  CloudUpload, Upload, Menu, ChevronRight, Loader2, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -317,12 +317,12 @@ const Aluno = () => {
   };
 
   return (
-    <div className="min-h-screen transition-colors duration-500" style={{ background: colors.panelBg }}>
+    <div className="min-h-screen transition-colors duration-500 w-full overflow-x-hidden" style={{ background: colors.panelBg }}>
       {/* Mobile Header */}
       {isMobile && (
-        <header className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between" style={{ background: colors.headerBg, borderBottom: `1px solid ${colors.headerBorder}` }}>
+        <header className="sticky top-0 z-30 px-4 py-3 flex items-center justify-between" style={{ background: colors.headerBg, borderBottom: `1px solid ${colors.headerBorder}` }}>
           <button onClick={() => setSidebarOpen(true)} className="p-2">
-            <Menu className="h-6 w-6" style={{ color: colors.sidebarTextActive }} />
+            <Menu className="h-6 w-6" style={{ color: colors.textPrimary }} />
           </button>
           <div className="flex items-center gap-3">
             <img src={logoWhite} alt="Logo Maestria" className="h-6 w-auto" style={{ filter: colors.logoFilter }} />
@@ -332,12 +332,12 @@ const Aluno = () => {
         </header>
       )}
 
-      {/* Mobile Sidebar Overlay */}
-      {isMobile && sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setSidebarOpen(false)} />
-      )}
-
       <div className="min-h-screen w-full flex">
+        {/* Mobile Sidebar Overlay — inside flex container */}
+        {isMobile && sidebarOpen && (
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSidebarOpen(false)} />
+        )}
+
         {/* Sidebar */}
         <aside
           className={`
@@ -352,9 +352,11 @@ const Aluno = () => {
           }}
         >
           {isMobile && (
-            <button onClick={() => setSidebarOpen(false)} className="self-end mb-4">
-              <LogOut className="h-6 w-6" style={{ color: colors.sidebarText }} />
-            </button>
+            <div className="flex justify-end mb-4">
+              <button onClick={() => setSidebarOpen(false)} className="p-2">
+                <X className="h-6 w-6" style={{ color: colors.sidebarText }} />
+              </button>
+            </div>
           )}
 
           {!isMobile && (
@@ -368,7 +370,11 @@ const Aluno = () => {
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => { setActiveSection(item.id); if (item.id === 'submit') setStep(1); setSidebarOpen(false); }}
+                onClick={() => {
+                  setActiveSection(item.id);
+                  if (item.id === 'submit') setStep(1);
+                  if (isMobile) setSidebarOpen(false);
+                }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 border ${
                   activeSection === item.id ? '' : 'border-transparent'
                 }`}
@@ -408,7 +414,7 @@ const Aluno = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6 space-y-6 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-6 space-y-6 overflow-y-auto min-w-0">
           {/* Desktop Header */}
           {!isMobile && (
             <header className="flex items-center justify-between mb-4">

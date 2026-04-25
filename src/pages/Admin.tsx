@@ -4,7 +4,7 @@ import {
   LayoutDashboard, BookOpen, Users, FileCheck, ScrollText, Link2,
   LogOut, Search, Plus, Pencil, Trash2, Check, X, ChevronRight, ChevronDown, ChevronUp,
   GraduationCap, Clock, Award, AlertTriangle, Filter,
-  ShieldCheck, UserPlus, Bell, ExternalLink, Settings, Save, Mail, Globe, Palette, KeyRound
+  ShieldCheck, UserPlus, Bell, ExternalLink, Settings, Save, Mail, Globe, Palette, KeyRound, Menu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import logoWhite from '@/assets/logo-white.png';
 
 // --- MUDANÇA 1: Importação do hook de tema ---
 import { useAppTheme } from '@/hooks/useapptheme';
+import { useIsMobile } from '@/hooks/use-mobile';
 import ThemeSwitcher from '@/components/themeswitcher';
 
 
@@ -83,6 +84,8 @@ const Admin = () => {
   const { user, token, signOut } = useAuth();
   const userName = user?.nome || 'Admin';
   const { colors } = useAppTheme();
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const inputStyle = {
     background: colors.inputBg,
     color: colors.textPrimary,
@@ -144,6 +147,11 @@ const [testingEmail, setTestingEmail] = useState(false);
   const [resetSenhaDialog, setResetSenhaDialog] = useState(false);
   const [resetSenhaUser, setResetSenhaUser] = useState<Usuario | null>(null);
   const [resetSenhaLoading, setResetSenhaLoading] = useState(false);
+  const [resetSenhaGerada, setResetSenhaGerada] = useState<string | null>(null);
+
+  const [approveDialog, setApproveDialog] = useState(false);
+  const [approveSubmissao, setApproveSubmissao] = useState<Submissao | null>(null);
+  const [approveHoras, setApproveHoras] = useState<number>(0);
 
 const generateSecurePassword = () => {
   const length = 12;
@@ -407,9 +415,13 @@ const loadSistemaConfig = useCallback(async () => {
     if (section === 'users') loadUsuarios();
   }, [roleFilter]);
 
-  const handleStatusChange = async (id: string, status: 'aprovado' | 'reprovado') => {
+  const handleStatusChange = async (id: string, status: 'aprovado' | 'reprovado', horasAprovadas?: number) => {
     try {
-      await apiFetch(`/api/submissoes/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      const body: Record<string, unknown> = { status };
+      if (status === 'aprovado' && horasAprovadas !== undefined) {
+        body.horas_aprovadas = horasAprovadas;
+      }
+      await apiFetch(`/api/submissoes/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
       toastSuccess(status === 'aprovado' ? 'Submissão aprovada!' : 'Submissão reprovada.');
       await Promise.all([loadSubmissoes(), loadDashboard()]);
     } catch (e: any) {
@@ -741,6 +753,12 @@ const handleEditUser = async () => {
     setCorrecaoDialog(true);
   };
 
+  const openApproveDialog = (sub: Submissao) => {
+    setApproveSubmissao(sub);
+    setApproveHoras(sub.horas_solicitadas || sub.carga_horaria_solicitada || 0);
+    setApproveDialog(true);
+  };
+
   const handleCorrecao = async () => {
     if (!correcaoSubmissao || !correcaoObs.trim()) {
       toastError('Observação é obrigatória para solicitar correção.');
@@ -765,12 +783,15 @@ const handleEditUser = async () => {
   const handleResetSenha = async () => {
     if (!resetSenhaUser) return;
     setResetSenhaLoading(true);
+    const novaSenha = generateSecurePassword();
     try {
-      const res = await apiFetch(`/api/usuarios/${resetSenhaUser.id}/reset-senha`, {
+      await apiFetch(`/api/usuarios/${resetSenhaUser.id}/reset-senha`, {
         method: 'POST',
+        body: JSON.stringify({ novaSenha }),
       });
-      toastSuccess(`Senha resetada! Nova senha enviada para ${resetSenhaUser.email}`);
+      toastSuccess(`Senha resetada!`);
       setResetSenhaDialog(false);
+      setResetSenhaGerada(novaSenha);
       setResetSenhaUser(null);
     } catch (e: any) {
       if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao resetar senha.');
@@ -831,9 +852,26 @@ const handleEditUser = async () => {
   };
 
   return (
-    <div className="min-h-screen flex transition-colors duration-300" style={{ background: colors.pageBg }}>
-      
-      <aside className="w-64 shrink-0 flex flex-col border-r" style={{ background: colors.sidebarBg, borderColor: colors.sidebarBorder }}>
+    <div className="min-h-screen flex transition-colors duration-300 w-full overflow-x-hidden" style={{ background: colors.pageBg }}>
+
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <aside className={`
+        ${isMobile ? 'fixed left-0 top-0 h-full z-50 transform transition-transform duration-300' : ''}
+        ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'}
+        w-64 shrink-0 flex flex-col border-r
+      `} style={{ background: colors.sidebarBg, borderColor: colors.sidebarBorder }}>
+        {isMobile && (
+          <div className="flex justify-end p-4">
+            <button onClick={() => setSidebarOpen(false)} className="p-2">
+              <X className="h-5 w-5" style={{ color: colors.sidebarText }} />
+            </button>
+          </div>
+        )}
+
         <div className="p-5 flex items-center gap-3 border-b" style={{ borderColor: colors.sidebarBorder }}>
           <img src={logoWhite} alt="Logo" className="h-9 w-auto" style={{ filter: colors.logoFilter }} />
           <div>
@@ -852,6 +890,7 @@ const handleEditUser = async () => {
                 setStatusFilter('all');
                 setCursoFilter('all');
                 setRoleFilter('all');
+                if (isMobile) setSidebarOpen(false);
               }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200"
               style={section === item.id ? { background: `${accentBlue}18`, border: `1px solid ${accentBlue}33`, color: colors.sidebarTextActive } : { color: colors.sidebarText }}
@@ -878,9 +917,16 @@ const handleEditUser = async () => {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col">
-        <header className="h-14 flex items-center justify-between px-6 border-b" style={{ background: colors.headerBg, borderColor: colors.headerBorder }}>
-          <h1 className="text-sm uppercase tracking-widest" style={{ color: colors.textPrimary }}>{navItems.find(n => n.id === section)?.label}</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b" style={{ background: colors.headerBg, borderColor: colors.headerBorder }}>
+          <div className="flex items-center gap-3">
+            {isMobile && (
+              <button onClick={() => setSidebarOpen(true)} className="p-2" style={{ color: colors.textPrimary }}>
+                <Menu className="h-5 w-5" />
+              </button>
+            )}
+            <h1 className="text-sm uppercase tracking-widest" style={{ color: colors.textPrimary }}>{navItems.find(n => n.id === section)?.label}</h1>
+          </div>
           <ThemeSwitcher />
         </header>
 
@@ -1107,7 +1153,7 @@ const handleEditUser = async () => {
                               <Button onClick={() => openCorrecaoDialog(sub)} style={{ background: 'hsla(45, 95%, 50%, 0.2)', color: 'hsl(45, 95%, 55%)' }}>
                                 <AlertTriangle className="h-4 w-4 mr-2" /> Correção
                               </Button>
-                              <Button onClick={() => handleStatusChange(sub.id, 'aprovado')} style={{ background: 'hsla(152, 60%, 40%, 0.2)', color: 'hsl(152, 60%, 55%)' }}>
+                              <Button onClick={() => openApproveDialog(sub)} style={{ background: 'hsla(152, 60%, 40%, 0.2)', color: 'hsl(152, 60%, 55%)' }}>
                                 <Check className="h-4 w-4 mr-2" /> Aprovar
                               </Button>
                             </div>
@@ -1693,6 +1739,89 @@ Equipe SENAC`;
             <Button onClick={() => setCorrecaoDialog(false)} variant="outline">Cancelar</Button>
             <Button onClick={handleCorrecao} style={{ background: 'hsl(45, 95%, 50%)', color: 'black' }}>
               Solicitar Correção
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Aprovar com horas */}
+      <Dialog open={approveDialog} onOpenChange={setApproveDialog}>
+        <DialogContent style={{ background: colors.panelBg }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: colors.textPrimary }}>Aprovar Submissão</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: colors.labelColor }}>
+              Aluno: <span style={{ color: colors.textPrimary }}>{approveSubmissao?.aluno_nome}</span>
+            </p>
+            <div>
+              <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>
+                Horas a aprovar
+              </label>
+              <Input
+                type="number"
+                min={1}
+                value={approveHoras}
+                onChange={e => setApproveHoras(Number(e.target.value))}
+                style={inputStyle}
+              />
+              <p className="text-xs mt-1" style={{ color: colors.labelColor }}>
+                Solicitado: {approveSubmissao?.horas_solicitadas || approveSubmissao?.carga_horaria_solicitada || 0}h
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setApproveDialog(false)} variant="outline">Cancelar</Button>
+            <Button
+              onClick={() => {
+                if (approveSubmissao) {
+                  handleStatusChange(approveSubmissao.id, 'aprovado', approveHoras);
+                  setApproveDialog(false);
+                }
+              }}
+              style={{ background: 'hsla(152, 60%, 40%, 0.8)', color: 'hsl(152, 60%, 55%)' }}
+            >
+              Confirmar Aprovação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Nova Senha Gerada */}
+      <Dialog open={!!resetSenhaGerada} onOpenChange={() => setResetSenhaGerada(null)}>
+        <DialogContent style={{ background: colors.panelBg }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: colors.textPrimary }}>Nova Senha Gerada</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: colors.labelColor }}>
+              Copie a nova senha e envie ao usuário por um canal seguro.
+            </p>
+            <div className="p-4 rounded-lg text-center" style={{ background: 'hsla(152, 60%, 40%, 0.1)', border: '1px solid hsla(152, 60%, 40%, 0.3)' }}>
+              <p className="font-mono text-lg font-bold tracking-widest" style={{ color: 'hsl(152, 60%, 55%)' }}>
+                {resetSenhaGerada}
+              </p>
+            </div>
+            <p className="text-xs" style={{ color: colors.labelColor }}>
+              Esta senha <strong>não será armazenada</strong> nem mostrada novamente.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                navigator.clipboard.writeText(resetSenhaGerada || '');
+                toastSuccess('Senha copiada!');
+              }}
+              style={{ borderColor: accentBlue, color: accentBlue }}
+            >
+              Copiar
+            </Button>
+            <Button
+              onClick={() => setResetSenhaGerada(null)}
+              style={{ background: accentOrange }}
+            >
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

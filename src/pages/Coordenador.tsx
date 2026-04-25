@@ -123,6 +123,11 @@ const Coordenador = () => {
   const [correcaoSubmissao, setCorrecaoSubmissao] = useState<Submissao | null>(null);
   const [correcaoObs, setCorrecaoObs] = useState('');
 
+  // Modal de aprovação com horas
+  const [approveDialog, setApproveDialog] = useState(false);
+  const [approveSubmissao, setApproveSubmissao] = useState<Submissao | null>(null);
+  const [approveHoras, setApproveHoras] = useState(0);
+
   // Hooks de autenticação - definidos ANTES dos useEffect
   const authHeaders = useCallback(() => ({
     'Content-Type': 'application/json',
@@ -308,12 +313,15 @@ const Coordenador = () => {
   }, [activeSection, token, fetchAlunos]);
 
   // Ações
-  const handleDecision = async (id: string, status: 'aprovado' | 'reprovado' | 'correcao', observacao?: string) => {
+  const handleDecision = async (id: string, status: 'aprovado' | 'reprovado' | 'correcao', observacao?: string, horasAprovadas?: number) => {
     setIsActionLoading(id);
     try {
       const body: any = { status, coordenador_id: user?.uid };
       if (status === 'correcao' && observacao) {
         body.observacao = observacao;
+      }
+      if (status === 'aprovado' && horasAprovadas !== undefined) {
+        body.horas_aprovadas = horasAprovadas;
       }
 
       const res = await fetch(`${API_BASE}/api/submissoes/${id}`, {
@@ -345,6 +353,12 @@ const Coordenador = () => {
     setCorrecaoSubmissao(submissao);
     setCorrecaoObs('');
     setCorrecaoDialog(true);
+  };
+
+  const openApproveDialog = (submissao: Submissao) => {
+    setApproveSubmissao(submissao);
+    setApproveHoras(submissao.horas_solicitadas || 0);
+    setApproveDialog(true);
   };
 
   const handleCadastrar = async (e: React.FormEvent) => {
@@ -416,26 +430,26 @@ const Coordenador = () => {
   };
 
   return (
-    <div className="min-h-screen transition-colors duration-300" style={{ background: colors.pageBg, color: colors.textPrimary }}>
+    <div className="min-h-screen transition-colors duration-300 w-full overflow-x-hidden" style={{ background: colors.pageBg, color: colors.textPrimary }}>
       {/* Mobile Header */}
       {isMobile && (
-        <header className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between" style={{ background: colors.sidebarBg, borderBottom: `1px solid ${colors.sidebarBorder}` }}>
+        <header className="sticky top-0 z-30 px-4 py-3 flex items-center justify-between" style={{ background: colors.headerBg, borderBottom: `1px solid ${colors.headerBorder}` }}>
           <button onClick={() => setSidebarOpen(true)} className="p-2">
-            <Menu className="h-6 w-6" style={{ color: colors.sidebarTextActive }} />
+            <Menu className="h-6 w-6" style={{ color: colors.textPrimary }} />
           </button>
-          <h1 className="text-xs uppercase tracking-widest font-display" style={{ color: colors.sidebarTextActive }}>
+          <h1 className="text-xs uppercase tracking-widest font-display" style={{ color: colors.textPrimary }}>
             Painel Coordenador
           </h1>
           <ThemeSwitcher />
         </header>
       )}
 
-      {/* Mobile Sidebar Overlay */}
-      {isMobile && sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setSidebarOpen(false)} />
-      )}
-
       <div className="flex flex-col md:flex-row min-h-screen w-full">
+        {/* Mobile Sidebar Overlay — inside flex container, below sidebar in DOM order */}
+        {isMobile && sidebarOpen && (
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSidebarOpen(false)} />
+        )}
+
         {/* Sidebar */}
         <aside
           className={`
@@ -450,9 +464,11 @@ const Coordenador = () => {
           }}
         >
           {isMobile && (
-            <button onClick={() => setSidebarOpen(false)} className="self-end mb-4">
-              <X className="h-6 w-6" style={{ color: colors.sidebarText }} />
-            </button>
+            <div className="flex justify-end mb-4">
+              <button onClick={() => setSidebarOpen(false)} className="p-2">
+                <X className="h-6 w-6" style={{ color: colors.sidebarText }} />
+              </button>
+            </div>
           )}
 
           <div className="flex items-center gap-3 mb-6">
@@ -467,7 +483,7 @@ const Coordenador = () => {
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => { setActiveSection(item.id); setSidebarOpen(false); }}
+                onClick={() => { setActiveSection(item.id); if (isMobile) setSidebarOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all border ${
                   activeSection === item.id ? 'border-orange-500/50 shadow-sm' : 'border-transparent'
                 }`}
@@ -499,7 +515,7 @@ const Coordenador = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6 space-y-6 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-6 space-y-6 overflow-y-auto min-w-0">
           {/* Desktop Header */}
           {!isMobile && (
             <header className="sticky top-0 z-40 py-4 mb-4" style={{ background: colors.pageBg }}>
@@ -558,7 +574,7 @@ const Coordenador = () => {
                             <p className="text-xs opacity-50">{s.curso_nome} • {s.area}</p>
                           </div>
                           <div className="flex gap-2">
-                            <Button size="sm" onClick={() => handleDecision(s.id, 'aprovado')} className="bg-emerald-600 hover:bg-emerald-500 text-white">Aprovar</Button>
+                            <Button size="sm" onClick={() => openApproveDialog(s)} className="bg-emerald-600 hover:bg-emerald-500 text-white">Aprovar</Button>
                             <Button size="sm" variant="outline" onClick={() => openCorrecaoDialog(s)} style={{ borderColor: 'hsl(45, 95%, 50%)', color: 'hsl(45, 95%, 55%)' }}>
                               <AlertTriangle className="h-3 w-3 mr-1" /> Correção
                             </Button>
@@ -672,7 +688,7 @@ const Coordenador = () => {
                                     <div className="flex flex-wrap gap-3 pt-4">
                                       <Button
                                         disabled={isActionLoading === s.id}
-                                        onClick={() => handleDecision(s.id, 'aprovado')}
+                                        onClick={() => openApproveDialog(s)}
                                         className="bg-emerald-600 hover:bg-emerald-500 text-white"
                                       >
                                         {isActionLoading === s.id ? <Loader2 className="animate-spin mr-2" /> : null}
@@ -823,6 +839,48 @@ const Coordenador = () => {
             >
               {isActionLoading === correcaoSubmissao?.id ? <Loader2 className="animate-spin mr-2" /> : null}
               Enviar para Correção
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Dialog: Aprovar com horas */}
+      <Dialog open={approveDialog} onOpenChange={setApproveDialog}>
+        <DialogContent style={{ background: colors.panelBg, border: `1px solid ${colors.cardBorder}` }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: colors.textPrimary }}>Aprovar Submissão</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: colors.textSecondary }}>
+              Aluno: <strong>{approveSubmissao?.aluno_nome}</strong>
+            </p>
+            <div>
+              <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>
+                Horas a aprovar
+              </label>
+              <Input
+                type="number"
+                min={1}
+                value={approveHoras}
+                onChange={e => setApproveHoras(Number(e.target.value))}
+                style={inputStyle}
+              />
+              <p className="text-xs mt-1" style={{ color: colors.labelColor }}>
+                Solicitado: {approveSubmissao?.horas_solicitadas || 0}h
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApproveDialog(false)}>Cancelar</Button>
+            <Button
+              onClick={() => {
+                if (approveSubmissao) {
+                  handleDecision(approveSubmissao.id, 'aprovado', undefined, approveHoras);
+                  setApproveDialog(false);
+                }
+              }}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+            >
+              Confirmar Aprovação
             </Button>
           </DialogFooter>
         </DialogContent>
