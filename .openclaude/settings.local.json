@@ -28,7 +28,9 @@
       "Bash(node -e \":*)",
       "Bash(grep -A2 '\"\"name\"\"\\\\|\"\"short_name\"\"' C:/Users/versi/Documents/GitHub/PWA/dist/manifest.webmanifest)",
       "Bash(ls C:/Users/versi/Documents/GitHub/PWA/public/manifest*)",
-      "Bash(DEBUG=*)"
+      "Bash(DEBUG=*)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\(''''dependencies'''',{}\\), indent=2\\)\\)\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\(''''dependencies'''',{}\\), indent=2\\)\\)\")"
     ]
   }
 }
