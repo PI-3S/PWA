@@ -17,32 +17,20 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      name: "Maestria SGC",
-      short_name: "Maestria",
-      description: "Sistema de Gestão de Atividades Complementares",
-      theme_color: "#1a56db",
-      background_color: "#1a1f2e",
-      display: "standalone",
-      start_url: "/",
-      icons: [
-        {
-          src: "/favicon.png",
-          sizes: "192x192",
-          type: "image/png",
-        },
-        {
-          src: "/favicon.png",
-          sizes: "512x512",
-          type: "image/png",
-        },
-        {
-          src: "/favicon.png",
-          sizes: "512x512",
-          type: "image/png",
-          purpose: "maskable",
-        },
-      ],
       registerType: "autoUpdate",
+      manifest: {
+        name: "SGC - Sistema de Gestão de Atividades Complementares",
+        short_name: "SGC",
+        description: "Sistema de Gestão de Atividades Complementares SENAC",
+        theme_color: "#1a56db",
+        background_color: "#1a1f2e",
+        display: "standalone",
+        start_url: "/",
+        icons: [
+          { src: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+          { src: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+        ]
+      }
     }),
   ].filter(Boolean),
   resolve: {

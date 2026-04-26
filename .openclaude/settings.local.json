@@ -21,7 +21,14 @@
       "Bash(find C:/Users/versi/Documents/GitHub/PWA/src -name Admin.tsx -o -name Admin*.tsx)",
       "Bash(find C:/Users/versi/Documents/GitHub/PWA/src -name *.ts -o -name *.js)",
       "Bash(find C:/Users/versi/Documents/GitHub/PWA -name usuarios* -type f)",
-      "Bash(find C:/Users/versi/Documents/GitHub/PWA -name *.js -path */api/* -o -name *.js -path */routes/* -o -name *.ts -path */api/*)"
+      "Bash(find C:/Users/versi/Documents/GitHub/PWA -name *.js -path */api/* -o -name *.js -path */routes/* -o -name *.ts -path */api/*)",
+      "Bash(identify C:/Users/versi/Documents/GitHub/PWA/src/assets/logo-white.png)",
+      "Bash(node -e \"require\\(''''sharp''''\\)\")",
+      "Bash(node -e \"require\\(''''canvas''''\\)\")",
+      "Bash(node -e \":*)",
+      "Bash(grep -A2 '\"\"name\"\"\\\\|\"\"short_name\"\"' C:/Users/versi/Documents/GitHub/PWA/dist/manifest.webmanifest)",
+      "Bash(ls C:/Users/versi/Documents/GitHub/PWA/public/manifest*)",
+      "Bash(DEBUG=*)"
     ]
   }
 }
