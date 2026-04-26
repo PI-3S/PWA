@@ -44,7 +44,7 @@ const Footer: React.FC = () => {
         </button>
       )}
       <p className="text-xs tracking-widest uppercase font-display">
-        Maestria SGC © 2026 · SENAC · v1.0.0
+        SGC - SENAC © 2026 · v1.0.0
       </p>
     </footer>
   );
