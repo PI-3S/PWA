@@ -1,103 +1,113 @@
-# Problemas Conhecidos - SGC
+# Known Issues
 
-**Data:** 2026-04-21 (ATUALIZADO)
+## 1. Componentes UI instalados mas nunca importados
 
-## ✅ PROBLEMAS RESOLVIDOS
+Estes componentes existem em `src/components/ui/` mas não são importados por nenhum arquivo do projeto. São componentes shadcn/ui instalados por padrão mas não utilizados:
 
-### 1. CRUD de Cursos - PATCH e DELETE inexistentes
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Endpoints adicionados em `routes/cursos.js`
+```
+accordion.tsx
+alert-dialog.tsx
+alert.tsx
+aspect-ratio.tsx
+avatar.tsx
+breadcrumb.tsx
+calendar.tsx
+card.tsx
+carousel.tsx
+chart.tsx
+checkbox.tsx
+collapsible.tsx
+context-menu.tsx
+drawer.tsx
+dropdown-menu.tsx
+form.tsx
+hover-card.tsx
+input-otp.tsx
+label.tsx
+menubar.tsx
+navigation-menu.tsx
+pagination.tsx
+popover.tsx
+progress.tsx
+radio-group.tsx
+resizable.tsx
+scroll-area.tsx
+separator.tsx
+sheet.tsx
+sidebar.tsx
+skeleton.tsx
+slider.tsx
+switch.tsx
+table.tsx
+tabs.tsx
+toggle-group.tsx
+toggle.tsx
+```
 
-### 2. Super Admin não via dados no Dashboard
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Adicionada verificação `if (perfil === 'super_admin')` no backend
+## 2. Arquivo de serviço nunca importado
 
-### 3. Configurações de Email hardcoded
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Coleção `configuracoes` no Firestore + painel admin
+- `src/services/api.ts` — Define `API_BASE_URL` e `apiClient` (get, post, patch, delete), mas nenhum arquivo do projeto o importa. As páginas usam `API_CONFIG.BASE_URL` de `@/data/data` diretamente. O arquivo pode ser removido ou suas funções devem ser utilizadas.
 
-### 4. Admin não via senha ao criar usuário
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Gerador de senha + modal + envio automático de email
+## 3. useEffects com dependências ausentes
 
-### 5. Erro "Cannot access before initialization"
-- **Status:** ✅ RESOLVIDO
-- **Solução:** `useCallback` movido para antes do `useEffect`
+### `src/pages/Aluno.tsx` — useEffect na linha 217
 
-### 6. Regras - PATCH e DELETE inexistentes
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Endpoints adicionados em `routes/regras.js`
+```ts
+useEffect(() => {
+  if (!token) return;
+  if (activeSection === 'progress' && selectedCurso) fetchDashboard();
+  if (activeSection === 'submit' && selectedCurso) fetchRegras();  // ← fetchRegras não está no deps array
+  if (activeSection === 'history') fetchSubmissoes();
+}, [activeSection, selectedCurso, token, fetchDashboard, fetchRegras, fetchSubmissoes]);
+//                                                   ^^^^^^^^^^^^^ fetchRegras falta aqui
+```
 
-### 7. Usuários - DELETE inexistente
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Endpoint adicionado com proteções
+O arquivo declara `fetchRegras` nos deps, mas o linter/nomeclatura real da linha 222 está correto. Verificar se o linter não reclama.
 
-### 8. Coordenadores (vínculos) - DELETE inexistente
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Endpoint adicionado em `routes/coordenadores_cursos.js`
+### `src/contexts/AuthContext.tsx` — useEffect na linha 90
 
-### 9. Campos vazios na tabela de validação
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Mapeamento robusto com múltiplos fallbacks + chamadas paralelas à API
+```ts
+useEffect(() => {
+  let interval: NodeJS.Timeout;
+  if (token) {
+    interval = setInterval(() => {
+      refreshAccessToken();  // ← refreshAccessToken não está no deps array
+    }, 45 * 60 * 1000);
+  }
+  return () => { if (interval) clearInterval(interval); };
+}, [token]);
+//    ^^^^^^^^^^^^^^^^^^^ refreshAccessToken deveria estar aqui
+```
 
-### 10. handleLogout do Admin limpava chave errada
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Corrigido para `welcomed_admin`
+`refreshAccessToken` é uma função declarada dentro do componente (não `useCallback`). Quando `token` muda, o interval é recriado com a nova referência, então funciona corretamente em runtime — mas é um smell que o linter captaria.
 
-### 11. React is not defined (Coordenador.tsx)
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Adicionado `React` ao import statement
+## 4. TODO deixado no código
 
-### 12. React is not defined (Aluno.tsx)
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Adicionado `React` ao import statement (usado em React.Fragment)
+### `src/contexts/AuthContext.tsx` — linha 19
+```ts
+// Função para renovar o token automaticamente usando o Refresh Token do Firebase
+// TODO: implementar renovação automática de token
+const refreshAccessToken = async () => {
+```
+Comentário indica que a função deveria renovar tokens automaticamente, mas a implementação já existe e é chamada no interval a cada 45 minutos. O TODO pode ser removido já que a feature está implementada.
 
-### 13. Aluno.tsx layout centralizado (não ocupava tela inteira)
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Removido `max-w-[1400px] mx-auto`, adicionado `min-h-screen w-full flex`
+## 5. console.log / console.error no código de produção
 
-### 14. Upload de arquivo no Aluno.tsx confuso
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Redesenhada área de upload com drag-and-drop, aviso de limite 4MB, feedback visual claro
+### `src/contexts/AuthContext.tsx`
+- **linha 28**: `console.error('FIREBASE_KEY não configurada. Token refresh desabilitado.')`
+- **linha 54**: `console.log("Sessão renovada automaticamente via Refresh Token.")`
+- **linha 60**: `console.error("Erro ao renovar sessão:", err)`
 
-### 15. Admin.tsx Validação sem aluno_nome/curso_nome/area
-- **Status:** ✅ RESOLVIDO
-- **Solução:** `loadSubmissoes` agora faz chamadas paralelas e enriquece dados com Maps
+### `src/pages/Admin.tsx`
+- **linha 216**: `console.error('API Error:', error)` — dentro de `apiFetch`, filtra errors que já são tratados, mas ainda faz log de erros de rede.
 
-### 16. Login sem opção "Esqueci minha senha"
-- **Status:** ✅ RESOLVIDO
-- **Solução:** Adicionado Dialog com recuperação de senha via `/api/auth/forgot-password`
+### `src/pages/NotFound.tsx`
+- **linha 8**: `console.error("404 Error: User attempted to access non-existent route:", location.pathname)` — intencional para rastreamento de 404s, mas usa `console.error` em vez de ferramenta de analytics.
 
----
+## 6. Função sem memoization (não causa bug, mas é ineficiente)
 
-## ⚠️ PROBLEMAS AINDA ATIVOS
-
-### Baixos
-
-#### 1. signOut com page reload
-- **Local:** `AuthContext.tsx:146`
-- **Solução:** Usar `navigate` do react-router
-
-#### 2. ProtectedRoute sem try/catch
-- **Local:** `ProtectedRoute.tsx:25-27`
-- **Solução:** Envolver `JSON.parse` em try/catch
-
-#### 3. apiClient não utilizado
-- **Solução:** Unificar chamadas HTTP
-
-#### 4. Configurações TypeScript permissivas
-#### 5. Testes inexistentes
-#### 6. CSS classes indefinidas
-
----
-
-## 📋 Componentes Órfãos (pendente remoção/refatoração)
-
-- `FilterBar.tsx` - imports quebrados
-- `SubmissionQueue.tsx` - imports quebrados
-- `EvaluationDialog.tsx` - imports quebrados
-- `NavLink.tsx` - não utilizado
-
----
-
-**Nota:** Todos os problemas críticos e médios foram resolvidos. O sistema está estável para uso.
+### `src/pages/Admin.tsx` — `generateSecurePassword` (linha 148)
+```ts
+const generateSecurePassword = () => { ... }
+```
+É uma função regular declarada no corpo do componente, não um `useCallback`. É recriada em cada render. Se for usada apenas em event handlers (o que é o caso atual), não causa bugs — mas se algum dia for passada como prop ou dependência de useEffect, pode causar re-renders desnecessários. Considere envolver em `useCallback` se o padrão se aplicar.

@@ -30,3 +30,9 @@ env
 *.sw?
 # Optional npm cache directory
 .env
+
+# PWA files
+sw.js
+workbox-*.js
+registerSW.js
+manifest.webmanifest
