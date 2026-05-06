@@ -154,16 +154,16 @@ O backend é uma API Node.js hospedada no Vercel. Configure as variáveis de amb
 ## Credenciais de Teste
 
 ### Super Admin
-- Email: `admin@senac.com.br`
+- Email: `admin@admin.com.br`
 - Senha: `admin123`
 
 ### Coordenador
-- Email: `coordenador@senac.com.br`
-- Senha: `coord123`
+- Email: `coordenador@gmail.com`
+- Senha: `cord123`
 
 ### Aluno
-- Email: `aluno@senac.com.br`
-- Senha: `aluno123`
+- Email: `joao@email.com`
+- Senha: `joao123`
 
 > **Nota**: Estas credenciais são apenas para ambiente de desenvolvimento. Em produção, utilize credenciais reais fornecidas pela instituição.
 
