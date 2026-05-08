@@ -160,6 +160,98 @@
 
 ---
 
+---
+
+### Fase 4: OCR e Melhorias de UX (07/05/2026) 🆕
+
+#### 07/05/2026 - Implementação de OCR e Correções de Bugs
+**Objetivo:** Implementar extração de dados de certificados via OCR e corrigir bugs de UI
+
+**Alterações Realizadas:**
+
+**BACKEND (Back-end-banco):**
+1. **ocr.js** - Adicionada função `extrairCamposEstruturados()`:
+   - Extrai campos estruturados usando regex patterns
+   - Retorna objeto com: nome, carga_horaria, data, instituicao, tipo, confianca
+   - Calcula score de confiança baseado em campos preenchidos
+
+2. **certificados.js** - Atualizado endpoint POST:
+   - Retorna `dados_ocr` junto com `texto_extraido`
+   - Adicionado endpoint DELETE para exclusão de certificados
+
+**FRONTEND - Novos Componentes:**
+3. **OcrPreview.tsx** (NOVO) - Componente reutilizável de visualização OCR:
+   - Visualização lado a lado: documento original + dados extraídos
+   - Indicador de confiança com coloração (alta/média/baixa)
+   - Modo de edição para correção manual dos campos
+   - Toggle para ver texto completo extraído
+   - Alerta quando confiança é baixa
+
+**FRONTEND - Atualizações:**
+4. **SubmissaoSection.tsx** (Aluno):
+   - Adicionado passo 3: preview OCR antes de submissão final
+   - Estados: `ocrData`, `certificadoId`
+   - Funções: `handleConfirmSubmission`, `handleCancelPreview`
+
+5. **SubmissoesSection.tsx** (Coordenador):
+   - Adicionado botão "Ver Análise Completa do OCR"
+   - Dialog com OcrPreview para visualização detalhada
+   - Estados: `showOcrPreview`, `selectedCertificado`
+
+6. **ValidacaoSection.tsx** (Admin):
+   - Similar funcionalidade de OCR preview
+   - Atualizado tipo `certData` para incluir `dados_ocr`
+
+7. **DashboardSection.tsx** (Coordenador):
+   - Removidos botões de ação (Aprovar, Correção, Reprovar)
+   - Substituídos por botão "Avaliar" que navega para Submissões
+   - Adicionado link "Ver todas" no header
+   - Removidos diálogos de aprovação/correção
+
+8. **RegrasSection.tsx** (Coordenador):
+   - Corrigido bug de tela azul: `colors.panelBg` → `colors.cardBg`
+   - Adicionada normalização de dados para compatibilidade formato antigo/novo
+   - Melhorada `categoriaBadge` com fallbacks e null checks
+   - Adicionado `cursosAcessiveis` para controle de permissões
+
+9. **Coordenador.tsx**:
+   - Adicionado `accentGreen` e passado para componentes
+   - Adicionado `onNavigateToSubmissoes` para Dashboard
+
+10. **Admin.tsx**:
+    - Adicionado `accentGreen` e passado para ValidacaoSection
+
+**TIPOS:**
+11. **coordenador.ts** - Adicionada interface `OcrData`:
+    ```typescript
+    export interface OcrData {
+      nome: string | null;
+      carga_horaria: string | null;
+      data: string | null;
+      instituicao: string | null;
+      tipo: string | null;
+      confianca: number;
+    }
+    ```
+
+**Problemas Resolvidos:**
+- ✅ Tela azul ao abrir OCR preview (colors.panelBg não existia)
+- ✅ accentGreen não definido em vários componentes
+- ✅ Dashboard do coordenador com botões de ação desnecessários
+- ✅ categoriaBadge com erros de undefined
+- ✅ Falta de visualização detalhada do OCR para coordenadores e admins
+
+**Funcionalidades Novas:**
+- ✅ Extração automática de dados de certificados via OCR
+- ✅ Visualização lado a lado de documento e dados extraídos
+- ✅ Indicador de confiança da extração
+- ✅ Correção manual de dados extraídos pelo aluno
+- ✅ Preview OCR antes de submissão final
+- ✅ Análise completa do OCR para coordenadores e admins
+- ✅ Dashboard simplificado com link para submissões
+
+---
+
 ## 🎯 Status Final do Projeto
 
 | Área | Status |
@@ -170,6 +262,7 @@
 | Coordenador | ✅ Completo |
 | Aluno | ✅ Completo |
 | Backend | ✅ Completo |
+| OCR | ✅ Completo |
 
 **Sistema pronto para produção!**
 
@@ -190,6 +283,10 @@
 11. **Enrichment de dados:** Usar Promise.all + Maps para lookup eficiente
 12. **Layout responsivo:** Usar `min-h-screen w-full flex` para telas completas
 13. **UX de upload:** Drag-and-drop + feedback visual + avisos claros
+14. **OCR Integration:** Regex patterns para extração estruturada de dados
+15. **Componentes Reutilizáveis:** OcrPreview pode ser usado em múltiplos contextos
+16. **Cores de Tema:** Sempre verificar se a cor existe antes de usar (panelBg vs cardBg)
+17. **Dashboard Simplificado:** Remover ações diretas, usar links para seções dedicadas
 
 ---
 
@@ -202,5 +299,5 @@
 
 ---
 
-**Última atualização:** 2026-04-21
-**Versão:** 3.0 - Final
+**Última atualização:** 2026-05-07
+**Versão:** 4.0 - OCR + UX Improvements

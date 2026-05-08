@@ -6,7 +6,7 @@ import { useAppTheme } from '@/hooks/useapptheme';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ThemeSwitcher from '@/components/themeswitcher';
 import {
-  LogOut, LayoutDashboard, FileText, Users, UserPlus,
+  LogOut, LayoutDashboard, FileText, Users, UserPlus, BookOpen,
   Menu, X
 } from 'lucide-react';
 import { API_CONFIG } from '@/data/data';
@@ -16,6 +16,7 @@ import DashboardSection from '@/components/coordenador/DashboardSection';
 import SubmissoesSection from '@/components/coordenador/SubmissoesSection';
 import AlunosSection from '@/components/coordenador/AlunosSection';
 import CadastrarSection from '@/components/coordenador/CadastrarSection';
+import RegrasSection from '@/components/coordenador/RegrasSection';
 
 const API_BASE = API_CONFIG.BASE_URL;
 
@@ -30,6 +31,7 @@ const toastError = (msg: string) => toast.error(msg, { style: { ...toastStyle, b
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'submissoes', label: 'Submissões', icon: FileText },
+  { id: 'regras', label: 'Regras', icon: BookOpen },
   { id: 'alunos', label: 'Alunos', icon: Users },
   { id: 'cadastrar', label: 'Cadastrar', icon: UserPlus },
 ];
@@ -43,6 +45,7 @@ const Coordenador = () => {
   const userName = user?.nome || 'Coordenador';
   const accentOrange = 'hsl(30, 95%, 55%)';
   const accentBlue = 'hsl(210, 80%, 55%)';
+  const accentGreen = 'hsl(152, 60%, 50%)';
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -218,11 +221,25 @@ const Coordenador = () => {
               toastError={toastError}
               accentBlue={accentBlue}
               accentOrange={accentOrange}
+              onNavigateToSubmissoes={() => setActiveSection('submissoes')}
             />
           )}
 
           {activeSection === 'submissoes' && (
             <SubmissoesSection
+              apiFetch={apiFetch}
+              user={{ uid: user?.uid || '' }}
+              colors={colors}
+              toastSuccess={toastSuccess}
+              toastError={toastError}
+              accentBlue={accentBlue}
+              accentOrange={accentOrange}
+              accentGreen={accentGreen}
+            />
+          )}
+
+          {activeSection === 'regras' && (
+            <RegrasSection
               apiFetch={apiFetch}
               user={{ uid: user?.uid || '' }}
               colors={colors}

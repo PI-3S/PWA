@@ -1,6 +1,6 @@
 # Lista de Tarefas - Sistema de Gestão de Certificados (SGC)
 
-**Última atualização:** 2026-04-21
+**Última atualização:** 2026-05-07
 
 ## ✅ Tarefas Concluídas
 
@@ -67,6 +67,30 @@
 46. [x] Aviso de limite 4MB para arquivos
 47. [x] Feedback visual no upload
 
+### OCR e Extração de Dados - NOVO ✅
+48. [x] Implementar extração de dados estruturados via OCR
+49. [x] Criar função `extrairCamposEstruturados()` no backend
+50. [x] Adicionar endpoint DELETE para certificados
+51. [x] Retornar `dados_ocr` junto com `texto_extraido`
+52. [x] Criar componente OcrPreview reutilizável
+53. [x] Adicionar preview OCR antes de submissão (aluno)
+54. [x] Adicionar visualização OCR completa (coordenador)
+55. [x] Adicionar visualização OCR completa (admin)
+56. [x] Implementar indicador de confiança da extração
+57. [x] Permitir correção manual de dados extraídos
+58. [x] Adicionar toggle para ver texto completo extraído
+59. [x] Adicionar alerta quando confiança é baixa
+
+### Correções de UI e Bugs - NOVO ✅
+60. [x] Corrigir tela azul no OCR preview (panelBg → cardBg)
+61. [x] Adicionar accentGreen em todos os componentes necessários
+62. [x] Simplificar dashboard do coordenador (remover ações diretas)
+63. [x] Adicionar link "Ver todas" no dashboard
+64. [x] Adicionar botão "Avaliar" que navega para submissões
+65. [x] Corrigir categoriaBadge com fallbacks e null checks
+66. [x] Adicionar normalização de dados em RegrasSection
+67. [x] Adicionar cursosAcessiveis para controle de permissões
+
 ---
 
 ## 📊 Status Real do Progresso
@@ -78,13 +102,14 @@
 | Admin - Dashboard | ✅ 100% | Corrigido para Super Admin |
 | Admin - Cursos | ✅ 100% | CRUD completo |
 | Admin - Usuários | ✅ 100% | CRUD + email automático |
-| Admin - Validação | ✅ 100% | Aprova/reprova/correção |
+| Admin - Validação | ✅ 100% | Aprova/reprova/correção + OCR |
 | Admin - Regras | ✅ 100% | CRUD completo |
 | Admin - Vínculos | ✅ 100% | CRUD completo |
 | Admin - Configurações | ✅ 100% | Email e sistema |
 | Backend - Endpoints | ✅ 100% | Todos CRUD completos |
-| Coordenador | ✅ 100% | Revisado e funcionando |
-| Aluno | ✅ 100% | Revisado e funcionando |
+| Backend - OCR | ✅ 100% | Extração estruturada de dados |
+| Coordenador | ✅ 100% | Revisado + OCR + Dashboard simplificado |
+| Aluno | ✅ 100% | Revisado + OCR preview |
 
 **Progresso Real:** 100% ✅
 
@@ -112,7 +137,11 @@
 - **Proteção ao excluir:** Verificar vínculos antes de DELETE
 - **Enrichment de dados:** Usar Promise.all + Maps para lookup eficiente
 - **Layout:** Usar `min-h-screen w-full flex` para ocupar tela inteira
+- **OCR Integration:** Regex patterns para extração estruturada de dados
+- **Componentes Reutilizáveis:** OcrPreview pode ser usado em múltiplos contextos
+- **Cores de Tema:** Sempre verificar se a cor existe antes de usar (panelBg vs cardBg)
+- **Dashboard Simplificado:** Remover ações diretas, usar links para seções dedicadas
 
 ---
-**Última verificação:** 2026-04-21
+**Última verificação:** 2026-05-07
 **Responsável:** Dev Full-Stack

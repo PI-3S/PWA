@@ -1,10 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { FileText, Clock, CheckCircle2, XCircle, Users, AlertTriangle, Loader2 } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, XCircle, Users, AlertTriangle, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAppTheme } from '@/hooks/useapptheme';
 import { DashboardMetrics, Submissao } from '@/types/coordenador';
 
@@ -16,6 +13,7 @@ interface DashboardSectionProps {
   toastError: (msg: string) => void;
   accentBlue: string;
   accentOrange: string;
+  onNavigateToSubmissoes?: () => void;
 }
 
 const DashboardSection: React.FC<DashboardSectionProps> = ({
@@ -26,19 +24,11 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
   toastError,
   accentBlue,
   accentOrange,
+  onNavigateToSubmissoes,
 }) => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [submissoes, setSubmissoes] = useState<Submissao[]>([]);
-  const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
-
-  const [approveDialog, setApproveDialog] = useState(false);
-  const [approveSubmissao, setApproveSubmissao] = useState<Submissao | null>(null);
-  const [approveHoras, setApproveHoras] = useState(0);
-
-  const [correcaoDialog, setCorrecaoDialog] = useState(false);
-  const [correcaoSubmissao, setCorrecaoSubmissao] = useState<Submissao | null>(null);
-  const [correcaoObs, setCorrecaoObs] = useState('');
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -111,41 +101,6 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
     Promise.all([fetchDashboard(), fetchSubmissoes()]).finally(() => setLoading(false));
   }, [fetchDashboard, fetchSubmissoes]);
 
-  const handleDecision = async (id: string, status: 'aprovado' | 'reprovado' | 'correcao', observacao?: string, horasAprovadas?: number) => {
-    setIsActionLoading(id);
-    try {
-      const body: any = { status, coordenador_id: user?.uid };
-      if (status === 'correcao' && observacao) body.observacao = observacao;
-      if (status === 'aprovado' && horasAprovadas !== undefined) body.horas_aprovadas = horasAprovadas;
-
-      await apiFetch(`/api/submissoes/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
-
-      const statusLabels = { aprovado: 'aprovada', reprovado: 'reprovada', correcao: 'enviada para correção' };
-      toastSuccess(`Submissão ${statusLabels[status]}!`);
-      setSubmissoes(prev => prev.map(s => s.id === id ? { ...s, status: status as any, observacao } : s));
-      await Promise.all([fetchDashboard(), fetchSubmissoes()]);
-      setCorrecaoDialog(false);
-      setCorrecaoSubmissao(null);
-      setCorrecaoObs('');
-    } catch (e: any) {
-      if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao processar decisão.');
-    } finally {
-      setIsActionLoading(null);
-    }
-  };
-
-  const openCorrecaoDialog = (submissao: Submissao) => {
-    setCorrecaoSubmissao(submissao);
-    setCorrecaoObs('');
-    setCorrecaoDialog(true);
-  };
-
-  const openApproveDialog = (submissao: Submissao) => {
-    setApproveSubmissao(submissao);
-    setApproveHoras(submissao.horas_solicitadas || 0);
-    setApproveDialog(true);
-  };
-
   const statusBadge = (status: string) => {
     const configs: Record<string, { bg: string; text: string; border: string; icon: any }> = {
       aprovado: { bg: 'hsla(152, 60%, 40%, 0.12)', text: 'hsl(152, 60%, 55%)', border: 'hsla(152, 60%, 40%, 0.3)', icon: CheckCircle2 },
@@ -189,9 +144,22 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
             </div>
 
             <div className="rounded-xl p-6 border overflow-x-auto" style={{ background: colors.cardBg, borderColor: colors.cardBorder }}>
-              <h3 className="text-sm font-display uppercase tracking-wider mb-4" style={{ color: colors.titleColor }}>
-                Fila de Prioridade (Pendentes)
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-display uppercase tracking-wider" style={{ color: colors.titleColor }}>
+                  Fila de Prioridade (Pendentes)
+                </h3>
+                {submissoes.filter(s => s.status === 'pendente').length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={onNavigateToSubmissoes}
+                    className="text-xs"
+                    style={{ color: accentOrange }}
+                  >
+                    Ver todas <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                )}
+              </div>
               <div className="space-y-3">
                 {submissoes.filter(s => s.status === 'pendente').slice(0, 5).map(s => (
                   <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border" style={{ background: colors.inputBg, borderColor: colors.inputBorder }}>
@@ -199,13 +167,14 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
                       <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>{s.aluno_nome}</p>
                       <p className="text-xs opacity-50">{s.curso_nome} • {s.area}</p>
                     </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => openApproveDialog(s)} className="bg-emerald-600 hover:bg-emerald-500 text-white">Aprovar</Button>
-                      <Button size="sm" variant="outline" onClick={() => openCorrecaoDialog(s)} style={{ borderColor: 'hsl(45, 95%, 50%)', color: 'hsl(45, 95%, 55%)' }}>
-                        <AlertTriangle className="h-3 w-3 mr-1" /> Correção
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleDecision(s.id, 'reprovado')} style={{ borderColor: 'hsl(0, 72%, 50%)', color: 'hsl(0, 72%, 60%)' }}>Reprovar</Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={onNavigateToSubmissoes}
+                      style={{ borderColor: colors.cardBorder }}
+                    >
+                      Avaliar
+                    </Button>
                   </div>
                 ))}
                 {submissoes.filter(s => s.status === 'pendente').length === 0 && (
@@ -216,53 +185,6 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
           </>
         )}
       </div>
-
-      {/* Modal de Correção */}
-      <Dialog open={correcaoDialog} onOpenChange={setCorrecaoDialog}>
-        <DialogContent style={{ background: colors.panelBg, border: `1px solid ${colors.cardBorder}` }}>
-          <DialogHeader>
-            <DialogTitle style={{ color: colors.textPrimary }}>Solicitar Correção</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm" style={{ color: colors.textSecondary }}>
-              Descreva o que precisa ser corrigido na submissão de <strong>{correcaoSubmissao?.aluno_nome}</strong>.
-            </p>
-            <Textarea placeholder="Observação obrigatória..." value={correcaoObs} onChange={e => setCorrecaoObs(e.target.value)} style={{ background: colors.inputBg, color: colors.textPrimary, border: `1px solid ${colors.inputBorder}` }} rows={4} />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCorrecaoDialog(false)}>Cancelar</Button>
-            <Button onClick={() => correcaoSubmissao && handleDecision(correcaoSubmissao.id, 'correcao', correcaoObs)} disabled={!correcaoObs.trim() || isActionLoading === correcaoSubmissao?.id} style={{ background: 'hsl(45, 95%, 50%)', color: 'black' }}>
-              {isActionLoading === correcaoSubmissao?.id ? <Loader2 className="animate-spin mr-2" /> : null}
-              Enviar para Correção
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Aprovar com horas */}
-      <Dialog open={approveDialog} onOpenChange={setApproveDialog}>
-        <DialogContent style={{ background: colors.panelBg, border: `1px solid ${colors.cardBorder}` }}>
-          <DialogHeader>
-            <DialogTitle style={{ color: colors.textPrimary }}>Aprovar Submissão</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm" style={{ color: colors.textSecondary }}>
-              Aluno: <strong>{approveSubmissao?.aluno_nome}</strong>
-            </p>
-            <div>
-              <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Horas a aprovar</label>
-              <Input type="number" min={1} value={approveHoras} onChange={e => setApproveHoras(Number(e.target.value))} style={{ background: colors.inputBg, color: colors.textPrimary, border: `1px solid ${colors.inputBorder}` }} />
-              <p className="text-xs mt-1" style={{ color: colors.labelColor }}>Solicitado: {approveSubmissao?.horas_solicitadas || 0}h</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setApproveDialog(false)}>Cancelar</Button>
-            <Button onClick={() => { if (approveSubmissao) { handleDecision(approveSubmissao.id, 'aprovado', undefined, approveHoras); setApproveDialog(false); } }} className="bg-emerald-600 hover:bg-emerald-500 text-white">
-              Confirmar Aprovação
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

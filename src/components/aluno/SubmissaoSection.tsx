@@ -1,9 +1,11 @@
-import React, { useState, useCallback } from 'react';
-import { Send, Upload, ChevronRight, CloudUpload, AlertTriangle, Loader2 } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Send, Upload, ChevronRight, CloudUpload, AlertTriangle, Loader2, Info, FileText, Clock, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Regra } from '@/types/aluno';
+import { useAppTheme } from '@/hooks/useapptheme';
+import { Regra, Submissao } from '@/types/aluno';
+import OcrPreview from './OcrPreview';
 
 interface SubmissaoSectionProps {
   apiFetch: (path: string, opts?: RequestInit) => Promise<any>;
@@ -13,8 +15,10 @@ interface SubmissaoSectionProps {
   toastSuccess: (msg: string) => void;
   toastError: (msg: string) => void;
   onSuccess: () => void;
+  onCancelEdit?: () => void;
   colors: ReturnType<typeof useAppTheme>['colors'];
   accentGreen: string;
+  submissaoParaEditar?: Submissao | null;
 }
 
 const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
@@ -25,8 +29,10 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
   toastSuccess,
   toastError,
   onSuccess,
+  onCancelEdit,
   colors,
   accentGreen,
+  submissaoParaEditar,
 }) => {
   const [step, setStep] = useState(1);
   const [subForm, setSubForm] = useState({ regra_id: '', carga_horaria_solicitada: '', tipo: '', descricao: '' });
@@ -34,6 +40,41 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [regraSelecionada, setRegraSelecionada] = useState<Regra | null>(null);
+  const [ocrData, setOcrData] = useState<{ texto_extraido: string; dados_ocr: any; url_arquivo: string } | null>(null);
+  const [certificadoId, setCertificadoId] = useState('');
+
+  // Carregar dados da submissão para edição
+  useEffect(() => {
+    if (submissaoParaEditar) {
+      setIsEditMode(true);
+      setCreatedSubId(submissaoParaEditar.id);
+      setSubForm({
+        regra_id: submissaoParaEditar.regra_id || '',
+        carga_horaria_solicitada: String(submissaoParaEditar.horas_solicitadas || ''),
+        tipo: submissaoParaEditar.tipo || '',
+        descricao: submissaoParaEditar.descricao || '',
+      });
+      setStep(2); // Vai direto para o passo de upload
+    } else {
+      setIsEditMode(false);
+      setSubForm({ regra_id: '', carga_horaria_solicitada: '', tipo: '', descricao: '' });
+      setCreatedSubId('');
+      setFile(null);
+      setStep(1);
+    }
+  }, [submissaoParaEditar]);
+
+  // Atualizar regra selecionada quando mudar o regra_id
+  useEffect(() => {
+    if (subForm.regra_id) {
+      const regra = regras.find(r => r.id === subForm.regra_id);
+      setRegraSelecionada(regra || null);
+    } else {
+      setRegraSelecionada(null);
+    }
+  }, [subForm.regra_id, regras]);
 
   const inputStyle = { background: colors.inputBg, color: colors.textPrimary, border: `1px solid ${colors.inputBorder}` };
 
@@ -80,11 +121,14 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
         body: fd,
       });
       if (res.ok) {
-        toastSuccess('Certificado enviado! Aguarde a avaliação.');
-        setStep(1);
-        setSubForm({ regra_id: '', carga_horaria_solicitada: '', tipo: '', descricao: '' });
-        setFile(null);
-        onSuccess();
+        const data = await res.json();
+        setCertificadoId(data.id);
+        setOcrData({
+          texto_extraido: data.texto_extraido || '',
+          dados_ocr: data.dados_ocr || null,
+          url_arquivo: data.url_arquivo || '',
+        });
+        setStep(3); // Vai para o passo de preview do OCR
       } else {
         const err = await res.json().catch(() => ({}));
         toastError(err.mensagem || err.error || 'Erro ao enviar arquivo.');
@@ -95,13 +139,58 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
     setSubmitting(false);
   };
 
+  const handleConfirmSubmission = async () => {
+    setSubmitting(true);
+    try {
+      // Se estiver em modo de edição, atualiza o status da submissão para pendente
+      if (isEditMode) {
+        await apiFetch(`/api/submissoes/${createdSubId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'pendente' }),
+        });
+      }
+      toastSuccess(isEditMode ? 'Correção enviada! Aguarde a avaliação.' : 'Certificado enviado! Aguarde a avaliação.');
+      setStep(1);
+      setSubForm({ regra_id: '', carga_horaria_solicitada: '', tipo: '', descricao: '' });
+      setFile(null);
+      setIsEditMode(false);
+      setCreatedSubId('');
+      setOcrData(null);
+      setCertificadoId('');
+      onSuccess();
+    } catch (err: any) {
+      toastError(err.message || 'Erro ao confirmar submissão.');
+    }
+    setSubmitting(false);
+  };
+
+  const handleCancelPreview = async () => {
+    // Deleta o certificado se o usuário cancelar
+    if (certificadoId) {
+      try {
+        await fetch(`${apiBase}/api/certificados/${certificadoId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        // Silencioso - não importa se falhar
+      }
+    }
+    setOcrData(null);
+    setCertificadoId('');
+    setFile(null);
+    setStep(2); // Volta para o passo de upload
+  };
+
   return (
     <div className="rounded-xl p-8" style={{ background: colors.cardBg, border: `1px solid ${colors.cardBorder}` }}>
       {step === 1 ? (
         <div className="space-y-6">
           <div className="flex items-center gap-3">
             <Send className="h-5 w-5 text-emerald-400" />
-            <h2 className="uppercase font-display tracking-widest" style={{ color: colors.titleColor }}>Dados da Atividade</h2>
+            <h2 className="uppercase font-display tracking-widest" style={{ color: colors.titleColor }}>
+              {isEditMode ? 'Corrigir Submissão' : 'Dados da Atividade'}
+            </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -139,20 +228,91 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
               placeholder="Descreva a atividade..."
             />
           </div>
-          <Button
-            onClick={handleStep1}
-            disabled={submitting}
-            className="w-full bg-emerald-600 hover:bg-emerald-500"
-          >
-            {submitting ? <Loader2 className="animate-spin mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
-            Próximo Passo
-          </Button>
+
+          {/* Informações da Regra Selecionada */}
+          {regraSelecionada && (
+            <div className="p-4 rounded-xl space-y-3" style={{ background: 'hsla(160, 70%, 50%, 0.08)', border: '1px solid hsla(160, 70%, 50%, 0.2)' }}>
+              <div className="flex items-center gap-2">
+                <Info className="h-4 w-4" style={{ color: accentGreen }} />
+                <h3 className="text-sm font-bold uppercase" style={{ color: accentGreen }}>Informações da Atividade</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="flex items-start gap-2">
+                  <FileText className="h-4 w-4 mt-0.5 shrink-0" style={{ color: colors.labelColor }} />
+                  <div>
+                    <p className="text-[10px] uppercase" style={{ color: colors.labelColor }}>Atividade</p>
+                    <p style={{ color: colors.textPrimary }}>{regraSelecionada.nome || regraSelecionada.area}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 mt-0.5 shrink-0" style={{ color: colors.labelColor }} />
+                  <div>
+                    <p className="text-[10px] uppercase" style={{ color: colors.labelColor }}>Horas Máximas</p>
+                    <p className="font-bold" style={{ color: accentGreen }}>{regraSelecionada.limite_horas || regraSelecionada.horas_maximas}h</p>
+                  </div>
+                </div>
+              </div>
+
+              {regraSelecionada.descricao && (
+                <div className="p-3 rounded-lg" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                  <p className="text-[10px] uppercase mb-1" style={{ color: colors.labelColor }}>Descrição</p>
+                  <p className="text-sm" style={{ color: colors.textPrimary }}>{regraSelecionada.descricao}</p>
+                </div>
+              )}
+
+              {regraSelecionada.requisitos_obrigatorios && (
+                <div className="p-3 rounded-lg" style={{ background: 'hsla(210, 80%, 50%, 0.1)', border: '1px solid hsla(210, 80%, 50%, 0.2)' }}>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" style={{ color: 'hsl(210, 80%, 60%)' }} />
+                    <div>
+                      <p className="text-[10px] uppercase font-bold mb-1" style={{ color: 'hsl(210, 80%, 60%)' }}>Requisitos Obrigatórios</p>
+                      <p className="text-sm" style={{ color: colors.textPrimary }}>{regraSelecionada.requisitos_obrigatorios}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {regraSelecionada.observacoes && (
+                <div className="p-3 rounded-lg" style={{ background: 'hsla(45, 95%, 50%, 0.1)', border: '1px solid hsla(45, 95%, 50%, 0.2)' }}>
+                  <p className="text-[10px] uppercase font-bold mb-1" style={{ color: 'hsl(45, 95%, 55%)' }}>Observações</p>
+                  <p className="text-sm" style={{ color: colors.textPrimary }}>{regraSelecionada.observacoes}</p>
+                </div>
+              )}
+
+              {regraSelecionada.tipo_documento && (
+                <div className="flex items-center gap-2 text-xs" style={{ color: colors.labelColor }}>
+                  <span>Tipo de documento aceito:</span>
+                  <span className="px-2 py-1 rounded" style={{ background: 'rgba(0,0,0,0.2)', color: colors.textPrimary }}>
+                    {regraSelecionada.tipo_documento === 'pdf' ? 'PDF' :
+                     regraSelecionada.tipo_documento === 'imagem' ? 'Imagem (JPG/PNG)' :
+                     regraSelecionada.tipo_documento === 'pdf_imagem' ? 'PDF ou Imagem' :
+                     regraSelecionada.tipo_documento}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isEditMode && (
+            <Button
+              onClick={handleStep1}
+              disabled={submitting}
+              className="w-full bg-emerald-600 hover:bg-emerald-500"
+            >
+              {submitting ? <Loader2 className="animate-spin mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
+              Próximo Passo
+            </Button>
+          )}
         </div>
-      ) : (
+      ) : step === 2 ? (
         <div className="space-y-6">
           <div className="flex items-center justify-center gap-3">
             <Upload className="h-5 w-5 text-emerald-400" />
-            <h2 className="uppercase font-display tracking-widest" style={{ color: colors.titleColor }}>Enviar Certificado</h2>
+            <h2 className="uppercase font-display tracking-widest" style={{ color: colors.titleColor }}>
+              {isEditMode ? 'Enviar Certificado Corrigido' : 'Enviar Certificado'}
+            </h2>
           </div>
 
           <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: 'hsla(45, 95%, 50%, 0.1)', border: '1px solid hsla(45, 95%, 50%, 0.3)' }}>
@@ -221,21 +381,67 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
           )}
 
           <div className="flex gap-4 pt-2">
-            <Button
-              onClick={() => setStep(1)}
-              variant="outline"
-              className="flex-1"
-              style={{ borderColor: colors.cardBorder, color: colors.labelColor }}
-            >
-              Voltar
-            </Button>
+            {isEditMode && onCancelEdit && (
+              <Button
+                onClick={onCancelEdit}
+                variant="outline"
+                className="flex-1"
+                style={{ borderColor: colors.cardBorder, color: colors.labelColor }}
+              >
+                Cancelar
+              </Button>
+            )}
             <Button
               onClick={handleUpload}
               disabled={submitting || !file}
               className="flex-1 bg-emerald-600 hover:bg-emerald-500"
             >
               {submitting ? <Loader2 className="animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-              Finalizar Envio
+              Analisar Certificado
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="flex items-center justify-center gap-3">
+            <CheckCircle className="h-5 w-5 text-emerald-400" />
+            <h2 className="uppercase font-display tracking-widest" style={{ color: colors.titleColor }}>
+              Verificar Dados Extraídos
+            </h2>
+          </div>
+
+          {ocrData && (
+            <OcrPreview
+              textoExtraido={ocrData.texto_extraido}
+              dadosOcr={ocrData.dados_ocr}
+              urlArquivo={ocrData.url_arquivo}
+              colors={colors}
+              accentGreen={accentGreen}
+              onSave={(dadosCorrigidos) => {
+                // Atualiza os dados do OCR com as correções
+                setOcrData({ ...ocrData, dados_ocr: dadosCorrigidos });
+              }}
+              onCancel={handleCancelPreview}
+              showSaveButton={false}
+            />
+          )}
+
+          <div className="flex gap-4 pt-2">
+            <Button
+              onClick={handleCancelPreview}
+              variant="outline"
+              className="flex-1"
+              style={{ borderColor: colors.cardBorder, color: colors.labelColor }}
+            >
+              Voltar e Reenviar
+            </Button>
+            <Button
+              onClick={handleConfirmSubmission}
+              disabled={submitting}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500"
+            >
+              {submitting ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+              Confirmar e Enviar
             </Button>
           </div>
         </div>

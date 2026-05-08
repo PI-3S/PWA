@@ -1,6 +1,7 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import { Submissao } from '@/types/aluno';
 
@@ -9,6 +10,7 @@ interface HistoricoSectionProps {
   isLoading: boolean;
   colors: ReturnType<typeof useAppTheme>['colors'];
   accentGreen: string;
+  onCorrigir?: (submissao: Submissao) => void;
 }
 
 const statusBadge = (status: string, colors: any, accentGreen: string) => {
@@ -43,6 +45,7 @@ const HistoricoSection: React.FC<HistoricoSectionProps> = ({
   isLoading,
   colors,
   accentGreen,
+  onCorrigir,
 }) => {
   return (
     <div className="rounded-xl border overflow-x-auto" style={{ background: colors.cardBg, borderColor: colors.cardBorder }}>
@@ -58,39 +61,58 @@ const HistoricoSection: React.FC<HistoricoSectionProps> = ({
               <th className="px-6 py-4">Tipo</th>
               <th className="px-6 py-4">Horas</th>
               <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4 text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y" style={{ borderColor: colors.cardBorder }}>
-            {submissoes.map(s => (
-              <React.Fragment key={s.id}>
-                <tr className="hover:opacity-80 transition-colors">
-                  <td className="px-6 py-4 font-mono" style={{ color: colors.textSecondary }}>
-                    {new Date(s.data_envio).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4" style={{ color: colors.textPrimary }}>{s.tipo}</td>
-                  <td className="px-6 py-4 font-bold" style={{ color: colors.titleColor }}>{s.horas_solicitadas}h</td>
-                  <td className="px-6 py-4">{statusBadge(s.status, colors, accentGreen)}</td>
-                </tr>
-                {s.status.toLowerCase() === 'correcao' && s.observacao && (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-3" style={{ background: 'hsla(45, 95%, 50%, 0.1)' }}>
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 mt-0.5" style={{ color: 'hsl(45, 95%, 55%)' }} />
-                        <div>
-                          <p className="text-[10px] uppercase font-bold mb-1" style={{ color: 'hsl(45, 95%, 55%)' }}>
-                            Observação do Coordenador
-                          </p>
-                          <p className="text-sm" style={{ color: colors.textPrimary }}>{s.observacao}</p>
-                        </div>
-                      </div>
+            {submissoes.map(s => {
+              const statusLower = s.status.toLowerCase();
+              const podeCorrigir = statusLower === 'reprovado' || statusLower === 'correcao';
+              return (
+                <React.Fragment key={s.id}>
+                  <tr className="hover:opacity-80 transition-colors">
+                    <td className="px-6 py-4 font-mono" style={{ color: colors.textSecondary }}>
+                      {new Date(s.data_envio).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4" style={{ color: colors.textPrimary }}>{s.tipo}</td>
+                    <td className="px-6 py-4 font-bold" style={{ color: colors.titleColor }}>{s.horas_solicitadas}h</td>
+                    <td className="px-6 py-4">{statusBadge(s.status, colors, accentGreen)}</td>
+                    <td className="px-6 py-4 text-right">
+                      {podeCorrigir && onCorrigir && (
+                        <Button
+                          onClick={() => onCorrigir(s)}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          style={{ borderColor: accentGreen, color: accentGreen }}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Corrigir
+                        </Button>
+                      )}
                     </td>
                   </tr>
-                )}
-              </React.Fragment>
-            ))}
+                  {(statusLower === 'correcao' || statusLower === 'reprovado') && s.observacao && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-3" style={{ background: statusLower === 'reprovado' ? 'hsla(0, 72%, 50%, 0.1)' : 'hsla(45, 95%, 50%, 0.1)' }}>
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 mt-0.5" style={{ color: statusLower === 'reprovado' ? 'hsl(0, 72%, 60%)' : 'hsl(45, 95%, 55%)' }} />
+                          <div>
+                            <p className="text-[10px] uppercase font-bold mb-1" style={{ color: statusLower === 'reprovado' ? 'hsl(0, 72%, 60%)' : 'hsl(45, 95%, 55%)' }}>
+                              {statusLower === 'reprovado' ? 'Motivo da Reprovação' : 'Observação do Coordenador'}
+                            </p>
+                            <p className="text-sm" style={{ color: colors.textPrimary }}>{s.observacao}</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
             {submissoes.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center" style={{ color: colors.labelColor }}>
+                <td colSpan={5} className="px-6 py-8 text-center" style={{ color: colors.labelColor }}>
                   Nenhuma submissão encontrada.
                 </td>
               </tr>

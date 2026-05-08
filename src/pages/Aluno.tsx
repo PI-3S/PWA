@@ -47,6 +47,7 @@ const Aluno = () => {
   const [regras, setRegras] = useState<Regra[]>([]);
   const [submissoes, setSubmissoes] = useState<Submissao[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [submissaoParaEditar, setSubmissaoParaEditar] = useState<Submissao | null>(null);
 
   const apiBase = API_CONFIG.BASE_URL;
 
@@ -58,6 +59,7 @@ const Aluno = () => {
     horas_solicitadas: s.horas_solicitadas || s.carga_horaria_solicitada || s.carga_horaria || 0,
     status: s.status || 'pendente',
     observacao: s.observacao || s.observacoes || '',
+    regra_id: s.regra_id || '',
   }), []);
 
   const apiFetch = useCallback(async (path: string, opts?: RequestInit) => {
@@ -141,6 +143,16 @@ const Aluno = () => {
     localStorage.removeItem('tokenExpiry');
     signOut();
     navigate('/');
+  };
+
+  const handleCorrigir = (submissao: Submissao) => {
+    setSubmissaoParaEditar(submissao);
+    setActiveSection('submit');
+  };
+
+  const handleCancelEdit = () => {
+    setSubmissaoParaEditar(null);
+    setActiveSection('history');
   };
 
   const userName = user?.nome || 'Aluno';
@@ -275,9 +287,12 @@ const Aluno = () => {
               onSuccess={() => {
                 setActiveSection('history');
                 fetchSubmissoes();
+                setSubmissaoParaEditar(null);
               }}
+              onCancelEdit={handleCancelEdit}
               colors={colors}
               accentGreen={accentGreen}
+              submissaoParaEditar={submissaoParaEditar}
             />
           )}
 
@@ -287,6 +302,7 @@ const Aluno = () => {
               isLoading={isLoading}
               colors={colors}
               accentGreen={accentGreen}
+              onCorrigir={handleCorrigir}
             />
           )}
         </main>

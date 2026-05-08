@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppTheme } from '@/hooks/useapptheme';
 import { Submissao, Curso } from '@/types/admin';
+import OcrPreview from '@/components/aluno/OcrPreview';
 
 interface ValidacaoSectionProps {
   apiFetch: (path: string, opts?: RequestInit) => Promise<any>;
@@ -16,6 +17,7 @@ interface ValidacaoSectionProps {
   toastError: (msg: string) => void;
   accentBlue: string;
   accentOrange: string;
+  accentGreen: string;
 }
 
 const ValidacaoSection: React.FC<ValidacaoSectionProps> = ({
@@ -25,13 +27,14 @@ const ValidacaoSection: React.FC<ValidacaoSectionProps> = ({
   toastError,
   accentBlue,
   accentOrange,
+  accentGreen,
 }) => {
   const [submissoes, setSubmissoes] = useState<Submissao[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [cursoFilter, setCursoFilter] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [certData, setCertData] = useState<{ url_arquivo?: string; texto_extraido?: string } | null>(null);
+  const [certData, setCertData] = useState<{ url_arquivo?: string; texto_extraido?: string; dados_ocr?: any; id?: string } | null>(null);
   const [loadingCert, setLoadingCert] = useState(false);
 
   const [correcaoDialog, setCorrecaoDialog] = useState(false);
@@ -41,6 +44,9 @@ const ValidacaoSection: React.FC<ValidacaoSectionProps> = ({
   const [approveDialog, setApproveDialog] = useState(false);
   const [approveSubmissao, setApproveSubmissao] = useState<Submissao | null>(null);
   const [approveHoras, setApproveHoras] = useState<number>(0);
+
+  const [showOcrPreview, setShowOcrPreview] = useState(false);
+  const [selectedCertificado, setSelectedCertificado] = useState<any>(null);
 
   const loadSubmissoes = useCallback(async () => {
     try {
@@ -326,6 +332,20 @@ const ValidacaoSection: React.FC<ValidacaoSectionProps> = ({
                                       </p>
                                     </div>
                                   )}
+                                  {certData.dados_ocr && (
+                                    <Button
+                                      onClick={() => {
+                                        setSelectedCertificado(certData);
+                                        setShowOcrPreview(true);
+                                      }}
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full"
+                                      style={{ borderColor: colors.cardBorder, color: colors.labelColor }}
+                                    >
+                                      Ver Análise Completa do OCR
+                                    </Button>
+                                  )}
                                 </div>
                               ) : (
                                 <p className="text-gray-400">Certificado não disponível</p>
@@ -345,7 +365,7 @@ const ValidacaoSection: React.FC<ValidacaoSectionProps> = ({
 
       {/* Dialog: Solicitar Correção */}
       <Dialog open={correcaoDialog} onOpenChange={setCorrecaoDialog}>
-        <DialogContent style={{ background: colors.panelBg }}>
+        <DialogContent style={{ background: colors.cardBg }}>
           <DialogHeader>
             <DialogTitle style={{ color: colors.textPrimary }}>Solicitar Correção</DialogTitle>
           </DialogHeader>
@@ -380,7 +400,7 @@ const ValidacaoSection: React.FC<ValidacaoSectionProps> = ({
 
       {/* Dialog: Aprovar com horas */}
       <Dialog open={approveDialog} onOpenChange={setApproveDialog}>
-        <DialogContent style={{ background: colors.panelBg }}>
+        <DialogContent style={{ background: colors.cardBg }}>
           <DialogHeader>
             <DialogTitle style={{ color: colors.textPrimary }}>Aprovar Submissão</DialogTitle>
           </DialogHeader>
@@ -418,6 +438,25 @@ const ValidacaoSection: React.FC<ValidacaoSectionProps> = ({
               Confirmar Aprovação
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: OCR Preview */}
+      <Dialog open={showOcrPreview} onOpenChange={setShowOcrPreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" style={{ background: colors.cardBg, border: `1px solid ${colors.cardBorder}` }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: colors.textPrimary }}>Análise Completa do Certificado</DialogTitle>
+          </DialogHeader>
+          {selectedCertificado && (
+            <OcrPreview
+              textoExtraido={selectedCertificado.texto_extraido || ''}
+              dadosOcr={selectedCertificado.dados_ocr}
+              urlArquivo={selectedCertificado.url_arquivo}
+              colors={colors}
+              accentGreen={accentGreen}
+              showSaveButton={false}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

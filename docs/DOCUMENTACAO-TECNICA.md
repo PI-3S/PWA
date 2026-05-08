@@ -209,10 +209,11 @@ Painel de coordenação com navegação lateral e área de conteúdo dinâmica.
 
 | Seção | Descrição |
 |---|---|
-| **Dashboard** | Métricas: total de submissões, pendentes, aprovadas, reprovadas e total de alunos. "Fila de Prioridade" — lista as 5 submissões pendentes mais antigas com ações rápidas (Aprovar, Correção, Reprovar). |
-| **Submissões** | Lista completa de submissões com filtros por curso e status. Cada linha é expansível via `ChevronDown/ChevronUp` e exibe: descrição, certificados anexados com link para PDF e OCR extraído, e botões de decisão. |
+| **Dashboard** | Métricas: total de submissões, pendentes, aprovadas, reprovadas e total de alunos. "Fila de Prioridade" — lista as 5 submissões pendentes mais antigas com botão "Avaliar" que navega para a seção de Submissões. Link "Ver todas" para acessar todas as submissões pendentes. |
+| **Submissões** | Lista completa de submissões com filtros por curso e status. Cada linha é expansível via `ChevronDown/ChevronUp` e exibe: descrição, certificados anexados com link para PDF, OCR extraído, botão "Ver Análise Completa do OCR" e botões de decisão (Aprovar, Correção, Reprovar). |
 | **Alunos** | Tabela com todos os alunos vinculados. Exibe nome, matrícula, curso e barra de progresso individual de horas aprovadas vs. carga mínima do curso. |
 | **Cadastrar** | Formulário para criar novo aluno: nome, matrícula, email, senha e curso. Envia `POST /api/usuarios` com `perfil: 'aluno'`. |
+| **Regras** | CRUD de regras de atividades complementares com filtros por curso, categoria e status. Exibe cards com detalhes: nome, categoria, descrição, horas máximas, tipo de documento, curso, requisitos obrigatórios e observações. |
 
 **Responsividade mobile:** Sidebar colapsável com overlay, header sticky com toggle de tema.
 
@@ -229,7 +230,7 @@ Painel do aluno com navegação lateral.
 | Seção | Descrição |
 |---|---|
 | **Meu Progresso** | Selector de curso (caso o aluno esteja em múltiplos). Barra de progresso visual (horas aprovadas / carga mínima). Cards de métricas (total envios, pendentes, aprovadas, reprovadas). Quebra por área de atividade com barras individuais. |
-| **Nova Submissão** | Fluxo em 2 etapas: **Passo 1** — seleciona área (regra), informa horas do certificado e descrição opcional. **Passo 2** — upload de arquivo (PDF, JPG, PNG — máximo 4 MB) com drag-and-drop. Ao finalizar, redireciona para Histórico. |
+| **Nova Submissão** | Fluxo em 3 etapas: **Passo 1** — seleciona área (regra), informa horas do certificado e descrição opcional. **Passo 2** — upload de arquivo (PDF, JPG, PNG — máximo 4 MB) com drag-and-drop. **Passo 3** — preview OCR com dados extraídos automaticamente, permitindo correção manual antes de confirmar. Ao finalizar, redireciona para Histórico. |
 | **Histórico** | Tabela com todas as submissões do aluno. Exibe data, tipo, horas e status (badge colorido). Linhas com status `correcao` exibem observação do coordenador. |
 
 **Responsividade:** Sidebar mobile com menu hamburger e overlay.
@@ -424,7 +425,8 @@ Todas as chamadas usam `${API_CONFIG.BASE_URL}{path}`.
 | `POST` | `/api/coordenadores-cursos` | Admin.tsx | Cria vínculo |
 | `DELETE` | `/api/coordenadores-cursos/:id` | Admin.tsx | Remove vínculo |
 | `GET` | `/api/certificados` | Admin.tsx, Coordenador.tsx, Aluno.tsx | Lista certificados (query: `?submissao_id=`) |
-| `POST` | `/api/certificados` | Aluno.tsx | Upload de certificado (multipart/form-data) |
+| `POST` | `/api/certificados` | Aluno.tsx | Upload de certificado (multipart/form-data) com OCR |
+| `DELETE` | `/api/certificados/:id` | Aluno.tsx | Exclui certificado |
 | `GET` | `/api/configuracoes/email_config` | Admin.tsx | Busca config de email |
 | `POST` | `/api/configuracoes/email_config` | Admin.tsx | Salva config de email |
 | `GET` | `/api/configuracoes/sistema_config` | Admin.tsx | Busca config do sistema |
@@ -482,3 +484,132 @@ Além disso, o sistema possui **tema global dark/light** (`ThemeContext`) que al
 - Cada perfil manter sua cor de acento mesmo ao trocar o tema.
 
 As cores são armazenadas em CSS variables customizadas (HSL) e aplicadas via `style={{ }}` inline nos componentes, garantindo que cada perfil tenha identidade visual distinta na mesma estrutura de layout.
+
+---
+
+## 8. OCR (Optical Character Recognition)
+
+### 8.1 Visão Geral
+
+O sistema integra OCR para extração automática de dados de certificados, facilitando o processo de submissão e validação de atividades complementares.
+
+### 8.2 Backend - Extração de Dados
+
+**Arquivo:** `Back-end-banco/functions/services/ocr.js`
+
+**Função:** `extrairCamposEstruturados(texto)`
+
+Extrai campos estruturados do texto extraído pelo OCR usando regex patterns:
+
+```javascript
+const extrairCamposEstruturados = (texto) => {
+  // Extrai nome do participante
+  const nomeMatch = texto.match(/(?:certificamos|declaramos|atestamos)\s+(?:que|a|o)\s+([A-Z\s]+?)(?:participou|concluiu|cumpriu)/i);
+  
+  // Extrai carga horária
+  const horasMatch = texto.match(/(\d+)\s*(?:horas?|hs|h)/i);
+  
+  // Extrai data
+  const dataMatch = texto.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+  
+  // Extrai instituição
+  const instituicaoMatch = texto.match(/(?:instituição|organização|empresa|faculdade|universidade)[:\s]+([A-Z\s]+)/i);
+  
+  // Extrai tipo de atividade
+  const tipoMatch = texto.match(/(?:atividade|evento|curso|palestra|workshop)[:\s]+([A-Z\s]+)/i);
+  
+  // Calcula confiança baseado em campos preenchidos
+  const camposPreenchidos = [nome, horas, data, instituicao, tipo].filter(Boolean).length;
+  const confianca = camposPreenchidos / 5;
+  
+  return { nome, carga_horaria, data, instituicao, tipo, confianca };
+};
+```
+
+**Endpoint:** `POST /api/certificados`
+
+Retorna:
+```json
+{
+  "success": true,
+  "id": "cert_id",
+  "url_arquivo": "https://...",
+  "texto_extraido": "Texto completo extraído...",
+  "dados_ocr": {
+    "nome": "João Silva",
+    "carga_horaria": "10",
+    "data": "15/03/2026",
+    "instituicao": "SENAC",
+    "tipo": "Workshop",
+    "confianca": 0.8
+  }
+}
+```
+
+### 8.3 Frontend - Componente OcrPreview
+
+**Arquivo:** `src/components/aluno/OcrPreview.tsx`
+
+**Props:**
+```typescript
+interface OcrPreviewProps {
+  textoExtraido: string;
+  dadosOcr: OcrData | null;
+  urlArquivo: string;
+  colors: ThemeColors;
+  accentGreen: string;
+  onSave?: (dadosCorrigidos: OcrData) => void;
+  onCancel?: () => void;
+  showSaveButton?: boolean;
+}
+```
+
+**Funcionalidades:**
+- Visualização lado a lado do documento original e dados extraídos
+- Indicador de confiança com coloração:
+  - Alta (≥ 0.8): verde
+  - Média (≥ 0.5): amarelo
+  - Baixa (< 0.5): vermelho
+- Modo de edição para correção manual dos campos
+- Toggle para ver texto completo extraído
+- Alerta quando confiança é baixa
+- Botão "Salvar Correções" (quando `showSaveButton` é true)
+
+### 8.4 Fluxo de Submissão com OCR
+
+**Aluno:**
+1. Seleciona regra e preenche dados básicos
+2. Faz upload do certificado
+3. **Preview OCR** - vê dados extraídos automaticamente
+4. Pode corrigir dados manualmente se necessário
+5. Confirma submissão
+
+**Coordenador/Admin:**
+1. Expande submissão pendente
+2. Vê link para PDF e texto extraído
+3. Clica em "Ver Análise Completa do OCR"
+4. Visualiza documento e dados extraídos lado a lado
+5. Pode aprovar, reprovar ou solicitar correção
+
+### 8.5 Tipos TypeScript
+
+**Arquivo:** `src/types/coordenador.ts`
+
+```typescript
+export interface OcrData {
+  nome: string | null;
+  carga_horaria: string | null;
+  data: string | null;
+  instituicao: string | null;
+  tipo: string | null;
+  confianca: number;
+}
+```
+
+### 8.6 Melhores Práticas
+
+- **Validação de confiança:** Alertar usuário quando confiança < 0.5
+- **Correção manual:** Sempre permitir edição dos dados extraídos
+- **Feedback visual:** Mostrar indicador de confiança com cores
+- **Preview antes de confirmar:** Não submeter sem revisão
+- **Texto completo:** Permitir ver texto bruto extraído para verificação

@@ -21,8 +21,15 @@ export interface DashboardAluno {
 export interface Regra {
   id: string;
   area: string;
-  limite_horas: number;
+  nome?: string;
+  limite_horas?: number;
+  horas_maximas?: number;
   curso_id: string;
+  descricao?: string;
+  requisitos_obrigatorios?: string;
+  tipo_documento?: string;
+  observacoes?: string;
+  ativo?: boolean;
 }
 
 export interface Submissao {
@@ -33,4 +40,5 @@ export interface Submissao {
   horas_solicitadas?: number;
   status: string;
   observacao?: string;
+  regra_id?: string;
 }

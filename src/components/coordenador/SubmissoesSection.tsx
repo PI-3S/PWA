@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppTheme } from '@/hooks/useapptheme';
 import { Submissao } from '@/types/coordenador';
+import OcrPreview from '@/components/aluno/OcrPreview';
 
 interface SubmissoesSectionProps {
   apiFetch: (path: string, opts?: RequestInit) => Promise<any>;
@@ -17,6 +18,7 @@ interface SubmissoesSectionProps {
   toastError: (msg: string) => void;
   accentBlue: string;
   accentOrange: string;
+  accentGreen: string;
 }
 
 const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
@@ -27,6 +29,7 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
   toastError,
   accentBlue,
   accentOrange,
+  accentGreen,
 }) => {
   const [submissoes, setSubmissoes] = useState<Submissao[]>([]);
   const [cursos, setCursos] = useState<{ id: string; nome: string }[]>([]);
@@ -43,6 +46,12 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
   const [approveDialog, setApproveDialog] = useState(false);
   const [approveSubmissao, setApproveSubmissao] = useState<Submissao | null>(null);
   const [approveHoras, setApproveHoras] = useState(0);
+
+  const [reprovarDialog, setReprovarDialog] = useState(false);
+  const [reprovarSubmissao, setReprovarSubmissao] = useState<Submissao | null>(null);
+  const [reprovarObs, setReprovarObs] = useState('');
+  const [showOcrPreview, setShowOcrPreview] = useState(false);
+  const [selectedCertificado, setSelectedCertificado] = useState<any>(null);
 
   const fetchSubmissoes = useCallback(async () => {
     try {
@@ -110,6 +119,7 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
     try {
       const body: any = { status, coordenador_id: user?.uid };
       if (status === 'correcao' && observacao) body.observacao = observacao;
+      if (status === 'reprovado' && observacao) body.observacao = observacao;
       if (status === 'aprovado' && horasAprovadas !== undefined) body.horas_aprovadas = horasAprovadas;
 
       await apiFetch(`/api/submissoes/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
@@ -121,6 +131,9 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
       setCorrecaoDialog(false);
       setCorrecaoSubmissao(null);
       setCorrecaoObs('');
+      setReprovarDialog(false);
+      setReprovarSubmissao(null);
+      setReprovarObs('');
     } catch (e: any) {
       if (e.message !== 'Não autorizado') toastError(e.message || 'Erro ao processar decisão.');
     } finally {
@@ -138,6 +151,12 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
     setApproveSubmissao(submissao);
     setApproveHoras(submissao.horas_solicitadas || 0);
     setApproveDialog(true);
+  };
+
+  const openReprovarDialog = (submissao: Submissao) => {
+    setReprovarSubmissao(submissao);
+    setReprovarObs('');
+    setReprovarDialog(true);
   };
 
   const statusBadge = (status: string) => {
@@ -221,11 +240,11 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
                 {expandedSub === s.id && (
                   <tr>
                     <td colSpan={5} className="px-8 py-6" style={{ background: 'rgba(0,0,0,0.2)' }}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className="space-y-4">
                           <h4 className="text-xs font-display uppercase opacity-50">Detalhes do Certificado</h4>
                           {certificados[s.id]?.map(cert => (
-                            <div key={cert.id} className="p-4 rounded-xl border space-y-3" style={{ background: colors.inputBg, borderColor: colors.inputBorder }}>
+                            <div key={cert.id} className="space-y-3">
                               <div className="flex justify-between items-center">
                                 <p className="text-xs font-mono truncate" style={{ color: colors.textPrimary }}>{cert.nome_arquivo}</p>
                                 <a href={cert.url_arquivo} target="_blank" rel="noreferrer" className="text-orange-500 hover:underline text-xs flex items-center gap-1">
@@ -237,6 +256,20 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
                                   <p className="text-[10px] uppercase opacity-50 mb-2">OCR - Texto Extraído</p>
                                   <p className="text-[11px] leading-relaxed max-h-32 overflow-y-auto" style={{ color: colors.textSecondary }}>{cert.texto_extraido}</p>
                                 </div>
+                              )}
+                              {cert.dados_ocr && (
+                                <Button
+                                  onClick={() => {
+                                    setSelectedCertificado(cert);
+                                    setShowOcrPreview(true);
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                  style={{ borderColor: colors.inputBorder, color: colors.labelColor }}
+                                >
+                                  Ver Análise Completa do OCR
+                                </Button>
                               )}
                             </div>
                           ))}
@@ -260,7 +293,7 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
                               <Button disabled={isActionLoading === s.id} variant="outline" onClick={() => openCorrecaoDialog(s)} style={{ borderColor: 'hsl(45, 95%, 50%)', color: 'hsl(45, 95%, 55%)' }}>
                                 CORREÇÃO
                               </Button>
-                              <Button disabled={isActionLoading === s.id} variant="outline" onClick={() => handleDecision(s.id, 'reprovado')} style={{ borderColor: 'hsl(0, 72%, 50%)', color: 'hsl(0, 72%, 60%)' }}>
+                              <Button disabled={isActionLoading === s.id} variant="outline" onClick={() => openReprovarDialog(s)} style={{ borderColor: 'hsl(0, 72%, 50%)', color: 'hsl(0, 72%, 60%)' }}>
                                 REPROVAR
                               </Button>
                             </div>
@@ -327,6 +360,71 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
               Confirmar Aprovação
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Reprovar com observação obrigatória */}
+      <Dialog open={reprovarDialog} onOpenChange={setReprovarDialog}>
+        <DialogContent style={{ background: colors.panelBg, border: `1px solid ${colors.cardBorder}` }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: colors.textPrimary }}>Reprovar Submissão</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: colors.textSecondary }}>
+              Aluno: <strong>{reprovarSubmissao?.aluno_nome}</strong>
+            </p>
+            <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: 'hsla(0, 72%, 50%, 0.1)', border: '1px solid hsla(0, 72%, 50%, 0.3)' }}>
+              <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: 'hsl(0, 72%, 60%)' }} />
+              <p className="text-xs" style={{ color: 'hsl(0, 72%, 70%)' }}>
+                A observação é obrigatória para que o aluno possa corrigir e reenviar a submissão.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs mb-1 block" style={{ color: colors.labelColor }}>Motivo da reprovação *</label>
+              <Textarea
+                placeholder="Descreva o motivo da reprovação..."
+                value={reprovarObs}
+                onChange={e => setReprovarObs(e.target.value)}
+                style={inputStyle}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReprovarDialog(false)}>Cancelar</Button>
+            <Button
+              onClick={() => {
+                if (reprovarSubmissao) {
+                  handleDecision(reprovarSubmissao.id, 'reprovado', reprovarObs);
+                  setReprovarDialog(false);
+                }
+              }}
+              disabled={!reprovarObs.trim() || isActionLoading === reprovarSubmissao?.id}
+              style={{ background: 'hsl(0, 72%, 50%)', color: 'white' }}
+            >
+              {isActionLoading === reprovarSubmissao?.id ? <Loader2 className="animate-spin mr-2" /> : null}
+              Confirmar Reprovação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: OCR Preview */}
+      <Dialog open={showOcrPreview} onOpenChange={setShowOcrPreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" style={{ background: colors.cardBg, border: `1px solid ${colors.cardBorder}` }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: colors.textPrimary }}>Análise Completa do Certificado</DialogTitle>
+          </DialogHeader>
+          {selectedCertificado && (
+            <OcrPreview
+              textoExtraido={selectedCertificado.texto_extraido || ''}
+              dadosOcr={selectedCertificado.dados_ocr}
+              urlArquivo={selectedCertificado.url_arquivo}
+              colors={colors}
+              accentGreen={accentGreen}
+              showSaveButton={false}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

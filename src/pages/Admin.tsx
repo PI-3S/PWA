@@ -34,6 +34,7 @@ const navItems = [
 
 const accentBlue = 'hsl(210, 80%, 55%)';
 const accentOrange = 'hsl(30, 95%, 55%)';
+const accentGreen = 'hsl(152, 60%, 50%)';
 
 const toastStyle = {
   background: 'hsl(220, 45%, 14%)',
@@ -216,6 +217,7 @@ const Admin = () => {
               toastError={toastError}
               accentBlue={accentBlue}
               accentOrange={accentOrange}
+              accentGreen={accentGreen}
             />
           )}
 
