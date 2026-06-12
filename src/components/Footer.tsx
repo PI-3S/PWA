@@ -3,7 +3,8 @@ import { useAppTheme } from '@/hooks/useapptheme';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Footer: React.FC = () => {
-  const { colors } = useAppTheme();
+  const { colors, theme } = useAppTheme();
+  const accentGreen = theme === 'dark' ? 'hsl(152, 60%, 45%)' : 'hsl(152, 60%, 32%)';
   const isMobile = useIsMobile();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -38,7 +39,8 @@ const Footer: React.FC = () => {
       {isMobile && deferredPrompt && !isInstalled && (
         <button
           onClick={handleInstall}
-          className="mb-2 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+          className="mb-2 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity text-white"
+          style={{ background: accentGreen }}
         >
           📲 Instalar App
         </button>

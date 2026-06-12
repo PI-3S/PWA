@@ -187,7 +187,7 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
       {step === 1 ? (
         <div className="space-y-6">
           <div className="flex items-center gap-3">
-            <Send className="h-5 w-5 text-emerald-400" />
+            <Send className="h-5 w-5" style={{ color: accentGreen }} />
             <h2 className="uppercase font-display tracking-widest" style={{ color: colors.titleColor }}>
               {isEditMode ? 'Corrigir Submissão' : 'Dados da Atividade'}
             </h2>
@@ -299,7 +299,7 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
             <Button
               onClick={handleStep1}
               disabled={submitting}
-              className="w-full bg-emerald-600 hover:bg-emerald-500"
+              className="w-full hover:opacity-90 transition-opacity" style={{ background: accentGreen, color: 'white' }}
             >
               {submitting ? <Loader2 className="animate-spin mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
               Próximo Passo
@@ -309,7 +309,7 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
       ) : step === 2 ? (
         <div className="space-y-6">
           <div className="flex items-center justify-center gap-3">
-            <Upload className="h-5 w-5 text-emerald-400" />
+            <Upload className="h-5 w-5" style={{ color: accentGreen }} />
             <h2 className="uppercase font-display tracking-widest" style={{ color: colors.titleColor }}>
               {isEditMode ? 'Enviar Certificado Corrigido' : 'Enviar Certificado'}
             </h2>
@@ -323,7 +323,7 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
           </div>
 
           <div
-            className={`relative p-8 border-2 border-dashed rounded-xl transition-all cursor-pointer ${dragActive ? 'border-emerald-500 bg-emerald-500/10' : ''}`}
+            className="relative p-8 border-2 border-dashed rounded-xl transition-all cursor-pointer"
             style={{ borderColor: dragActive ? accentGreen : colors.inputBorder, background: colors.inputBg }}
             onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
             onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
@@ -394,7 +394,7 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
             <Button
               onClick={handleUpload}
               disabled={submitting || !file}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-500"
+              className="flex-1 hover:opacity-90 transition-opacity" style={{ background: accentGreen, color: 'white' }}
             >
               {submitting ? <Loader2 className="animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
               Analisar Certificado
@@ -404,7 +404,7 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
       ) : (
         <div className="space-y-6">
           <div className="flex items-center justify-center gap-3">
-            <CheckCircle className="h-5 w-5 text-emerald-400" />
+            <CheckCircle className="h-5 w-5" style={{ color: accentGreen }} />
             <h2 className="uppercase font-display tracking-widest" style={{ color: colors.titleColor }}>
               Verificar Dados Extraídos
             </h2>
@@ -438,7 +438,7 @@ const SubmissaoSection: React.FC<SubmissaoSectionProps> = ({
             <Button
               onClick={handleConfirmSubmission}
               disabled={submitting}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-500"
+              className="flex-1 hover:opacity-90 transition-opacity" style={{ background: accentGreen, color: 'white' }}
             >
               {submitting ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
               Confirmar e Enviar

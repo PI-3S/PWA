@@ -218,20 +218,27 @@ const ConfiguracoesSection: React.FC<ConfiguracoesSectionProps> = ({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 mt-6">
-          <Button onClick={saveEmailConfig} disabled={loadingConfig} style={{ background: accentBlue }}>
+          <button
+            type="button"
+            onClick={saveEmailConfig}
+            disabled={loadingConfig}
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={{ background: accentBlue, color: 'white' }}
+          >
             <Save className="h-4 w-4 mr-2" />
             {loadingConfig ? 'Salvando...' : 'Salvar Configurações'}
-          </Button>
+          </button>
 
-          <Button
+          <button
+            type="button"
             onClick={testEmailConfig}
             disabled={testingEmail}
-            variant="outline"
-            style={{ borderColor: accentOrange, color: accentOrange }}
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={{ border: `1px solid ${accentOrange}`, color: accentOrange, background: `${accentOrange}12` }}
           >
-            <Mail className="h-4 w-4 mr-2" />
+            <Mail className="h-4 w-4" />
             {testingEmail ? 'Enviando...' : 'Enviar Email de Teste'}
-          </Button>
+          </button>
         </div>
 
         <p className="text-xs mt-4" style={{ color: colors.labelColor }}>
@@ -316,10 +323,16 @@ const ConfiguracoesSection: React.FC<ConfiguracoesSectionProps> = ({
         </div>
 
         <div className="flex gap-3 mt-6">
-          <Button onClick={saveSistemaConfig} disabled={loadingConfig} style={{ background: accentBlue }}>
+          <button
+            type="button"
+            onClick={saveSistemaConfig}
+            disabled={loadingConfig}
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={{ background: accentBlue, color: 'white' }}
+          >
             <Save className="h-4 w-4 mr-2" />
             Salvar Configurações
-          </Button>
+          </button>
         </div>
       </div>
     </div>

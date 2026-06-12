@@ -103,7 +103,7 @@ const AlunosSection: React.FC<AlunosSectionProps> = ({
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: colors.inputBg }}>
-                      <div className="h-full bg-orange-500" style={{ width: `${progresso.progresso}%` }} />
+                      <div className="h-full rounded-full" style={{ width: `${progresso.progresso}%`, background: accentOrange }} />
                     </div>
                     <span className="text-xs font-mono" style={{ color: colors.textPrimary }}>{progresso.horasAprovadas}h</span>
                   </div>

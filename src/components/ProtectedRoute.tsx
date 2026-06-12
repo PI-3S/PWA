@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserPerfil } from '@/data/data';
+import { useAppTheme } from '@/hooks/useapptheme';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -9,12 +10,16 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
+  const { colors } = useAppTheme();
 
   // 1. Enquanto carrega o token do localStorage, exibe um carregamento
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-900">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+      <div className="flex h-screen w-full items-center justify-center" style={{ background: colors.pageBg }}>
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-4"
+          style={{ borderColor: colors.sidebarText, borderTopColor: 'transparent' }}
+        ></div>
       </div>
     );
   }

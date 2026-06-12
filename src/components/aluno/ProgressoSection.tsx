@@ -59,7 +59,7 @@ const ProgressoSection: React.FC<ProgressoSectionProps> = ({
   if (isLoading) {
     return (
       <div className="flex justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: accentGreen }} />
       </div>
     );
   }
@@ -130,8 +130,8 @@ const ProgressoSection: React.FC<ProgressoSectionProps> = ({
               </div>
               <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: colors.cardBorder }}>
                 <div
-                  className="h-full bg-emerald-500 rounded-full"
-                  style={{ width: `${Math.min((area.horas / area.limite) * 100, 100)}%` }}
+                  className="h-full rounded-full"
+                  style={{ width: `${Math.min((area.horas / area.limite) * 100, 100)}%`, background: accentGreen }}
                 />
               </div>
             </div>

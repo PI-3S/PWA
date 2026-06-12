@@ -15,29 +15,19 @@ interface HistoricoSectionProps {
 
 const statusBadge = (status: string, colors: any, accentGreen: string) => {
   const s = status.toLowerCase();
-  const configs: Record<string, JSX.Element> = {
-    aprovado: (
-      <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-        <CheckCircle2 className="h-3 w-3 mr-1" />Aprovado
-      </Badge>
-    ),
-    reprovado: (
-      <Badge className="bg-red-500/20 text-red-400 border border-red-500/30">
-        <XCircle className="h-3 w-3 mr-1" />Reprovado
-      </Badge>
-    ),
-    pendente: (
-      <Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30">
-        <Clock className="h-3 w-3 mr-1" />Pendente
-      </Badge>
-    ),
-    correcao: (
-      <Badge className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-        <AlertTriangle className="h-3 w-3 mr-1" />Correção
-      </Badge>
-    ),
+  const configs: Record<string, { bg: string; text: string; border: string; icon: any; label: string }> = {
+    aprovado: { bg: 'hsla(152, 60%, 40%, 0.12)', text: 'hsl(152, 60%, 45%)', border: 'hsla(152, 60%, 40%, 0.3)', icon: CheckCircle2, label: 'Aprovado' },
+    reprovado: { bg: 'hsla(0, 72%, 50%, 0.12)', text: 'hsl(0, 72%, 50%)', border: 'hsla(0, 72%, 50%, 0.3)', icon: XCircle, label: 'Reprovado' },
+    pendente: { bg: 'hsla(38, 92%, 50%, 0.12)', text: 'hsl(38, 80%, 40%)', border: 'hsla(38, 92%, 50%, 0.3)', icon: Clock, label: 'Pendente' },
+    correcao: { bg: 'hsla(45, 95%, 50%, 0.12)', text: 'hsl(45, 85%, 38%)', border: 'hsla(45, 95%, 50%, 0.3)', icon: AlertTriangle, label: 'Correção' },
   };
-  return configs[s] || configs.pendente;
+  const config = configs[s] || configs.pendente;
+  const Icon = config.icon;
+  return (
+    <Badge style={{ background: config.bg, color: config.text, border: `1px solid ${config.border}` }}>
+      <Icon className="h-3 w-3 mr-1" />{config.label}
+    </Badge>
+  );
 };
 
 const HistoricoSection: React.FC<HistoricoSectionProps> = ({
@@ -51,12 +41,12 @@ const HistoricoSection: React.FC<HistoricoSectionProps> = ({
     <div className="rounded-xl border overflow-x-auto" style={{ background: colors.cardBg, borderColor: colors.cardBorder }}>
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+          <Loader2 className="h-8 w-8 animate-spin" style={{ color: accentGreen }} />
         </div>
       ) : (
         <table className="w-full text-left text-sm min-w-[500px]">
           <thead style={{ background: colors.sidebarBg }}>
-            <tr className="text-[10px] uppercase font-display" style={{ color: accentGreen }}>
+            <tr className="text-[10px] uppercase font-display" style={{ color: colors.labelColor }}>
               <th className="px-6 py-4">Data</th>
               <th className="px-6 py-4">Tipo</th>
               <th className="px-6 py-4">Horas</th>
@@ -79,16 +69,15 @@ const HistoricoSection: React.FC<HistoricoSectionProps> = ({
                     <td className="px-6 py-4">{statusBadge(s.status, colors, accentGreen)}</td>
                     <td className="px-6 py-4 text-right">
                       {podeCorrigir && onCorrigir && (
-                        <Button
+                        <button
+                          type="button"
                           onClick={() => onCorrigir(s)}
-                          variant="outline"
-                          size="sm"
-                          className="text-xs"
-                          style={{ borderColor: accentGreen, color: accentGreen }}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity hover:opacity-80"
+                          style={{ border: `1px solid ${accentGreen}`, color: accentGreen, background: `${accentGreen}12` }}
                         >
-                          <RefreshCw className="h-3 w-3 mr-1" />
+                          <RefreshCw className="h-3 w-3" />
                           Corrigir
-                        </Button>
+                        </button>
                       )}
                     </td>
                   </tr>

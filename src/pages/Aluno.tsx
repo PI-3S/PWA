@@ -1,34 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppTheme } from '@/hooks/useapptheme';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useApi } from '@/hooks/useApi';
 import ThemeSwitcher from '@/components/themeswitcher';
-import {
-  LogOut, BarChart3, Send, FileText,
-  Menu, X, Loader2
-} from 'lucide-react';
+import { LogOut, BarChart3, Send, FileText, Menu, X } from 'lucide-react';
 import { API_CONFIG } from '@/data/data';
 import logoWhite from '@/assets/logo-white.png';
 import Footer from '@/components/Footer';
+import { toastSuccess, toastError } from '@/lib/toast';
+import { ACCENT } from '@/lib/constants';
 import ProgressoSection from '@/components/aluno/ProgressoSection';
 import SubmissaoSection from '@/components/aluno/SubmissaoSection';
 import HistoricoSection from '@/components/aluno/HistoricoSection';
 import { Regra, Submissao } from '@/types/aluno';
 
-const toastStyle = {
-  background: 'hsl(220, 45%, 14%)',
-  color: 'white',
-  border: '1px solid hsla(200, 60%, 40%, 0.3)',
-};
-const toastSuccess = (msg: string) => toast.success(msg, { style: toastStyle });
-const toastError = (msg: string) => toast.error(msg, { style: { ...toastStyle, border: '1px solid hsla(0,70%,50%,0.4)' } });
-
 const navItems = [
-  { id: 'progress', label: 'Meu Progresso', icon: BarChart3 },
-  { id: 'submit', label: 'Nova Submissão', icon: Send },
-  { id: 'history', label: 'Histórico', icon: FileText },
+  { id: 'progress', label: 'Meu Progresso',   icon: BarChart3 },
+  { id: 'submit',   label: 'Nova Submissão',   icon: Send },
+  { id: 'history',  label: 'Histórico',        icon: FileText },
 ];
 
 const Aluno = () => {
@@ -36,9 +27,10 @@ const Aluno = () => {
   const { user, token, signOut } = useAuth();
   const { colors } = useAppTheme();
   const isMobile = useIsMobile();
+  const { apiFetch } = useApi();
 
-  const accentGreen = 'hsl(160, 70%, 55%)';
-  const accentGreenDim = 'hsl(160, 70%, 40%)';
+  const apiBase = API_CONFIG.BASE_URL;
+  const userName = user?.nome || 'Aluno';
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('progress');
@@ -48,8 +40,6 @@ const Aluno = () => {
   const [submissoes, setSubmissoes] = useState<Submissao[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [submissaoParaEditar, setSubmissaoParaEditar] = useState<Submissao | null>(null);
-
-  const apiBase = API_CONFIG.BASE_URL;
 
   const mapSubmissao = useCallback((s: any): Submissao => ({
     id: s.id,
@@ -61,19 +51,6 @@ const Aluno = () => {
     observacao: s.observacao || s.observacoes || '',
     regra_id: s.regra_id || '',
   }), []);
-
-  const apiFetch = useCallback(async (path: string, opts?: RequestInit) => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
-    };
-    const res = await fetch(`${apiBase}${path}`, { headers, ...opts });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.mensagem || err.error || `Erro ${res.status}`);
-    }
-    return res.json();
-  }, [token, apiBase]);
 
   const fetchCursos = useCallback(async () => {
     if (!token) return;
@@ -113,20 +90,11 @@ const Aluno = () => {
   useEffect(() => {
     const storedToken = localStorage.getItem('authToken') || localStorage.getItem('token');
     const storedUser = localStorage.getItem('usuario') || localStorage.getItem('userData');
-    if (!storedToken || !storedUser) {
-      navigate('/login/aluno');
-      return;
-    }
-    try {
-      JSON.parse(storedUser);
-    } catch {
-      navigate('/login/aluno');
-    }
+    if (!storedToken || !storedUser) { navigate('/login/aluno'); return; }
+    try { JSON.parse(storedUser); } catch { navigate('/login/aluno'); }
   }, [navigate]);
 
-  useEffect(() => {
-    if (token) fetchCursos();
-  }, [token, fetchCursos]);
+  useEffect(() => { if (token) fetchCursos(); }, [token, fetchCursos]);
 
   useEffect(() => {
     if (!token) return;
@@ -134,16 +102,7 @@ const Aluno = () => {
     if (activeSection === 'history') fetchSubmissoes();
   }, [activeSection, selectedCurso, token, fetchRegras, fetchSubmissoes]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('usuario');
-    localStorage.removeItem('userData');
-    localStorage.removeItem('tokenExpiry');
-    signOut();
-    navigate('/');
-  };
+  const handleLogout = useCallback(() => { signOut(); navigate('/'); }, [signOut, navigate]);
 
   const handleCorrigir = (submissao: Submissao) => {
     setSubmissaoParaEditar(submissao);
@@ -155,18 +114,17 @@ const Aluno = () => {
     setActiveSection('history');
   };
 
-  const userName = user?.nome || 'Aluno';
-
   return (
     <div className="min-h-screen transition-colors duration-500 w-full overflow-x-hidden" style={{ background: colors.panelBg }}>
-      {/* Mobile Header */}
+
       {isMobile && (
-        <header className="sticky top-0 z-30 px-4 py-3 flex items-center justify-between" style={{ background: colors.headerBg, borderBottom: `1px solid ${colors.headerBorder}` }}>
-          <button onClick={() => setSidebarOpen(true)} className="p-2">
+        <header className="sticky top-0 z-30 px-4 py-3 flex items-center justify-between"
+          style={{ background: colors.headerBg, borderBottom: `1px solid ${colors.headerBorder}` }}>
+          <button type="button" onClick={() => setSidebarOpen(true)} className="p-2" title="Abrir menu">
             <Menu className="h-6 w-6" style={{ color: colors.textPrimary }} />
           </button>
           <div className="flex items-center gap-3">
-            <img src={logoWhite} alt="Logo Maestria" className="h-6 w-auto" style={{ filter: colors.logoFilter }} />
+            <img src={logoWhite} alt="Logo" className="h-6 w-auto" style={{ filter: colors.logoFilter }} />
             <h1 className="text-xs uppercase tracking-widest font-display" style={{ color: colors.titleColor }}>Maestria Aluno</h1>
           </div>
           <ThemeSwitcher />
@@ -178,22 +136,16 @@ const Aluno = () => {
           <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSidebarOpen(false)} />
         )}
 
-        {/* Sidebar */}
-        <aside
-          className={`
+        <aside className={`
             ${isMobile ? 'fixed left-0 top-0 h-full z-50 transform transition-transform duration-300' : ''}
             ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'}
             w-64 shrink-0 p-4
           `}
-          style={{
-            background: colors.sidebarBg,
-            borderRight: `1px solid ${colors.sidebarBorder}`,
-            ...(isMobile ? {} : { minHeight: '100vh' })
-          }}
-        >
+          style={{ background: colors.sidebarBg, borderRight: `1px solid ${colors.sidebarBorder}`, ...(isMobile ? {} : { minHeight: '100vh' }) }}>
+
           {isMobile && (
             <div className="flex justify-end mb-4">
-              <button onClick={() => setSidebarOpen(false)} className="p-2">
+              <button type="button" onClick={() => setSidebarOpen(false)} className="p-2" title="Fechar menu">
                 <X className="h-6 w-6" style={{ color: colors.sidebarText }} />
               </button>
             </div>
@@ -201,7 +153,7 @@ const Aluno = () => {
 
           {!isMobile && (
             <div className="flex items-center gap-4 mb-6">
-              <img src={logoWhite} alt="Logo Maestria" className="h-8 w-auto" style={{ filter: colors.logoFilter }} />
+              <img src={logoWhite} alt="Logo" className="h-8 w-auto" style={{ filter: colors.logoFilter }} />
               <h1 className="font-display text-sm tracking-widest uppercase" style={{ color: colors.titleColor }}>Maestria Aluno</h1>
             </div>
           )}
@@ -209,22 +161,18 @@ const Aluno = () => {
           <nav className="space-y-1">
             {navItems.map((item) => (
               <button
+                type="button"
                 key={item.id}
-                onClick={() => {
-                  setActiveSection(item.id);
-                  if (isMobile) setSidebarOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 border ${
-                  activeSection === item.id ? '' : 'border-transparent'
-                }`}
+                onClick={() => { setActiveSection(item.id); if (isMobile) setSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 border ${activeSection === item.id ? '' : 'border-transparent'}`}
                 style={activeSection === item.id ? {
                   background: 'hsla(160, 70%, 50%, 0.15)',
-                  border: `1px solid ${accentGreen}`,
+                  border: `1px solid ${ACCENT.alunoGreen}`,
                   color: colors.sidebarTextActive,
                   boxShadow: '0 0 15px -5px hsla(160, 70%, 50%, 0.3)',
                 } : { color: colors.labelColor }}
               >
-                <item.icon className="h-4 w-4" style={activeSection === item.id ? { color: accentGreen } : {}} />
+                <item.icon className="h-4 w-4" style={activeSection === item.id ? { color: ACCENT.alunoGreen } : {}} />
                 {item.label}
               </button>
             ))}
@@ -233,7 +181,8 @@ const Aluno = () => {
           <div className="pt-4 mt-4 border-t" style={{ borderColor: colors.sidebarBorder }}>
             {!isMobile && (
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: `linear-gradient(135deg, ${accentGreen}, ${accentGreenDim})` }}>
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                  style={{ background: `linear-gradient(135deg, ${ACCENT.alunoGreen}, ${ACCENT.alunoGreenDim})` }}>
                   {userName.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -242,17 +191,13 @@ const Aluno = () => {
                 </div>
               </div>
             )}
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs uppercase"
-              style={{ background: 'hsla(0, 70%, 50%, 0.15)', border: '1px solid hsla(0, 70%, 50%, 0.3)', color: 'hsl(0, 70%, 65%)' }}
-            >
+            <button type="button" onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs uppercase"
+              style={{ background: 'hsla(0, 70%, 50%, 0.15)', border: '1px solid hsla(0, 70%, 50%, 0.3)', color: 'hsl(0, 70%, 65%)' }}>
               <LogOut className="h-3.5 w-3.5" /> Sair
             </button>
           </div>
         </aside>
 
-        {/* Main Content */}
         <main className="flex-1 p-4 md:p-6 space-y-6 overflow-y-auto min-w-0">
           {!isMobile && (
             <header className="flex items-center justify-between mb-4">
@@ -264,46 +209,20 @@ const Aluno = () => {
           )}
 
           {activeSection === 'progress' && (
-            <ProgressoSection
-              apiFetch={apiFetch}
-              cursos={cursos}
-              selectedCurso={selectedCurso}
-              onSelectCurso={setSelectedCurso}
-              toastError={toastError}
-              colors={colors}
-              accentGreen={accentGreen}
-              accentGreenDim={accentGreenDim}
-            />
+            <ProgressoSection apiFetch={apiFetch} cursos={cursos} selectedCurso={selectedCurso}
+              onSelectCurso={setSelectedCurso} toastError={toastError} colors={colors}
+              accentGreen={ACCENT.alunoGreen} accentGreenDim={ACCENT.alunoGreenDim} />
           )}
-
           {activeSection === 'submit' && (
-            <SubmissaoSection
-              apiFetch={apiFetch}
-              apiBase={apiBase}
-              token={token}
-              regras={regras}
-              toastSuccess={toastSuccess}
-              toastError={toastError}
-              onSuccess={() => {
-                setActiveSection('history');
-                fetchSubmissoes();
-                setSubmissaoParaEditar(null);
-              }}
-              onCancelEdit={handleCancelEdit}
-              colors={colors}
-              accentGreen={accentGreen}
-              submissaoParaEditar={submissaoParaEditar}
-            />
+            <SubmissaoSection apiFetch={apiFetch} apiBase={apiBase} token={token} regras={regras}
+              toastSuccess={toastSuccess} toastError={toastError}
+              onSuccess={() => { setActiveSection('history'); fetchSubmissoes(); setSubmissaoParaEditar(null); }}
+              onCancelEdit={handleCancelEdit} colors={colors}
+              accentGreen={ACCENT.alunoGreen} submissaoParaEditar={submissaoParaEditar} />
           )}
-
           {activeSection === 'history' && (
-            <HistoricoSection
-              submissoes={submissoes}
-              isLoading={isLoading}
-              colors={colors}
-              accentGreen={accentGreen}
-              onCorrigir={handleCorrigir}
-            />
+            <HistoricoSection submissoes={submissoes} isLoading={isLoading} colors={colors}
+              accentGreen={ACCENT.alunoGreen} onCorrigir={handleCorrigir} />
           )}
         </main>
       </div>

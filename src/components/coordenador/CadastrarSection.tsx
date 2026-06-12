@@ -90,7 +90,7 @@ const CadastrarSection: React.FC<CadastrarSectionProps> = ({
           <label className="text-xs uppercase" style={{ color: colors.labelColor }}>Senha Temporária</label>
           <Input type="password" value={cadForm.senha} onChange={e => setCadForm({ ...cadForm, senha: e.target.value })} style={inputStyle} required />
         </div>
-        <Button type="submit" disabled={cadLoading} className="w-full bg-orange-600 hover:bg-orange-500 text-white">
+        <Button type="submit" disabled={cadLoading} className="w-full hover:opacity-90 transition-opacity" style={{ background: accentOrange, color: 'white' }}>
           {cadLoading ? <Loader2 className="animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
           CADASTRAR ALUNO
         </Button>

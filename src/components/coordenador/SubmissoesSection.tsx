@@ -239,21 +239,21 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
                 </tr>
                 {expandedSub === s.id && (
                   <tr>
-                    <td colSpan={5} className="px-8 py-6" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                    <td colSpan={5} className="px-8 py-6" style={{ background: colors.tableBg }}>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className="space-y-4">
-                          <h4 className="text-xs font-display uppercase opacity-50">Detalhes do Certificado</h4>
+                          <h4 className="text-xs font-display uppercase" style={{ color: colors.labelColor }}>Detalhes do Certificado</h4>
                           {certificados[s.id]?.map(cert => (
                             <div key={cert.id} className="space-y-3">
                               <div className="flex justify-between items-center">
                                 <p className="text-xs font-mono truncate" style={{ color: colors.textPrimary }}>{cert.nome_arquivo}</p>
-                                <a href={cert.url_arquivo} target="_blank" rel="noreferrer" className="text-orange-500 hover:underline text-xs flex items-center gap-1">
+                                <a href={cert.url_arquivo} target="_blank" rel="noreferrer" className="hover:underline text-xs flex items-center gap-1" style={{ color: accentOrange }}>
                                   <ExternalLink className="h-3 w-3" /> Ver PDF
                                 </a>
                               </div>
                               {cert.texto_extraido && (
-                                <div className="p-3 bg-black/40 rounded-lg border border-white/5">
-                                  <p className="text-[10px] uppercase opacity-50 mb-2">OCR - Texto Extraído</p>
+                                <div className="p-3 rounded-lg" style={{ background: colors.inputBg, border: `1px solid ${colors.cardBorder}` }}>
+                                  <p className="text-[10px] uppercase mb-2" style={{ color: colors.labelColor }}>OCR - Texto Extraído</p>
                                   <p className="text-[11px] leading-relaxed max-h-32 overflow-y-auto" style={{ color: colors.textSecondary }}>{cert.texto_extraido}</p>
                                 </div>
                               )}
@@ -273,10 +273,10 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
                               )}
                             </div>
                           ))}
-                          {!certificados[s.id]?.length && <p className="text-xs opacity-50">Nenhum certificado anexado.</p>}
+                          {!certificados[s.id]?.length && <p className="text-xs" style={{ color: colors.labelColor }}>Nenhum certificado anexado.</p>}
                         </div>
                         <div className="space-y-4">
-                          <h4 className="text-xs font-display uppercase opacity-50">Tomar Decisão</h4>
+                          <h4 className="text-xs font-display uppercase" style={{ color: colors.labelColor }}>Tomar Decisão</h4>
                           <p className="text-sm italic" style={{ color: colors.textSecondary }}>"{s.descricao || 'Sem descrição.'}"</p>
                           {s.status === 'correcao' && s.observacao && (
                             <div className="p-3 rounded-lg border" style={{ background: 'hsla(45, 95%, 50%, 0.1)', borderColor: 'hsla(45, 95%, 50%, 0.3)' }}>
@@ -286,7 +286,7 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
                           )}
                           {(s.status === 'pendente' || s.status === 'correcao') ? (
                             <div className="flex flex-wrap gap-3 pt-4">
-                              <Button disabled={isActionLoading === s.id} onClick={() => openApproveDialog(s)} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+                              <Button disabled={isActionLoading === s.id} onClick={() => openApproveDialog(s)} className="hover:opacity-90 transition-opacity" style={{ background: accentGreen, color: 'white' }}>
                                 {isActionLoading === s.id ? <Loader2 className="animate-spin mr-2" /> : null}
                                 APROVAR HORAS
                               </Button>
@@ -356,7 +356,7 @@ const SubmissoesSection: React.FC<SubmissoesSectionProps> = ({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setApproveDialog(false)}>Cancelar</Button>
-            <Button onClick={() => { if (approveSubmissao) { handleDecision(approveSubmissao.id, 'aprovado', undefined, approveHoras); setApproveDialog(false); } }} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+            <Button onClick={() => { if (approveSubmissao) { handleDecision(approveSubmissao.id, 'aprovado', undefined, approveHoras); setApproveDialog(false); } }} className="hover:opacity-90 transition-opacity" style={{ background: accentGreen, color: 'white' }}>
               Confirmar Aprovação
             </Button>
           </DialogFooter>

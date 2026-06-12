@@ -149,15 +149,14 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
                   Fila de Prioridade (Pendentes)
                 </h3>
                 {submissoes.filter(s => s.status === 'pendente').length > 0 && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
+                  <button
+                    type="button"
                     onClick={onNavigateToSubmissoes}
-                    className="text-xs"
-                    style={{ color: accentOrange }}
+                    className="flex items-center gap-1 text-xs px-2 py-1 rounded transition-opacity hover:opacity-70"
+                    style={{ color: accentOrange, background: 'transparent' }}
                   >
-                    Ver todas <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
+                    Ver todas <ArrowRight className="h-3 w-3" />
+                  </button>
                 )}
               </div>
               <div className="space-y-3">
@@ -167,14 +166,14 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
                       <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>{s.aluno_nome}</p>
                       <p className="text-xs opacity-50">{s.curso_nome} • {s.area}</p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
+                    <button
+                      type="button"
                       onClick={onNavigateToSubmissoes}
-                      style={{ borderColor: colors.cardBorder }}
+                      className="px-3 py-1.5 rounded-md text-xs font-medium transition-opacity hover:opacity-70"
+                      style={{ border: `1px solid ${accentOrange}`, color: accentOrange, background: 'transparent' }}
                     >
                       Avaliar
-                    </Button>
+                    </button>
                   </div>
                 ))}
                 {submissoes.filter(s => s.status === 'pendente').length === 0 && (

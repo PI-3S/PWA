@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, LogIn, ClipboardList, GraduationCap, ShieldCheck, KeyRound } from 'lucide-react';
-import { toast } from 'sonner';
+import { toastSuccess, toastError } from '@/lib/toast';
 import logoWhite from '@/assets/logo-white.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppTheme } from '@/hooks/useapptheme';
@@ -74,7 +74,7 @@ const Login = () => {
     const { error } = await signIn(email, password);
 
     if (error) {
-      toast.error(error);
+      toastError(error);
       setIsSubmitting(false);
       return;
     }
@@ -96,7 +96,7 @@ const Login = () => {
       // Limpa tudo se o perfil estiver errado para o login escolhido
       localStorage.removeItem('token');
       localStorage.removeItem('usuario');
-      toast.error(`Acesso negado. ${messages[config.perfil]}`);
+      toastError(`Acesso negado. ${messages[config.perfil]}`);
       setIsSubmitting(false);
       return;
     }
@@ -107,7 +107,7 @@ const Login = () => {
 
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
-      toast.error('Digite um e-mail válido.');
+      toastError('Digite um e-mail válido.');
       return;
     }
 
@@ -125,11 +125,11 @@ const Login = () => {
         throw new Error(data.mensagem || data.error || 'Erro ao solicitar recuperação.');
       }
 
-      toast.success('Se o e-mail estiver cadastrado, você receberá instruções para redefinir sua senha.');
+      toastSuccess('Se o e-mail estiver cadastrado, você receberá instruções para redefinir sua senha.');
       setForgotDialog(false);
       setForgotEmail('');
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao solicitar recuperação de senha.');
+      toastError(error.message || 'Erro ao solicitar recuperação de senha.');
     } finally {
       setForgotLoading(false);
     }
@@ -190,7 +190,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
-                className="w-full pl-10 pr-4 py-3 rounded-lg text-sm placeholder:text-white/20 focus:outline-none focus:ring-2 transition-all font-mono"
+                className="w-full pl-10 pr-4 py-3 rounded-lg text-sm placeholder:opacity-40 focus:outline-none transition-all font-mono"
                 style={{
                   background: tc.inputBg,
                   border: `1px solid ${tc.inputBorder}`,
@@ -221,7 +221,7 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 minLength={6}
-                className="w-full pl-10 pr-4 py-3 rounded-lg text-sm placeholder:text-white/20 focus:outline-none focus:ring-2 transition-all font-mono"
+                className="w-full pl-10 pr-4 py-3 rounded-lg text-sm placeholder:opacity-40 focus:outline-none transition-all font-mono"
                 style={{
                   background: tc.inputBg,
                   border: `1px solid ${tc.inputBorder}`,
@@ -301,16 +301,23 @@ const Login = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setForgotDialog(false)} variant="outline">
+            <button
+              type="button"
+              onClick={() => setForgotDialog(false)}
+              className="px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-70"
+              style={{ border: `1px solid ${tc.cardBorder}`, color: tc.textSecondary, background: 'transparent' }}
+            >
               Cancelar
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
               onClick={handleForgotPassword}
               disabled={forgotLoading}
-              style={{ background: config.accentGradient }}
+              className="px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+              style={{ background: config.accentGradient, color: 'white' }}
             >
               {forgotLoading ? 'Enviando...' : 'Enviar'}
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -251,7 +251,11 @@ const UsuariosSection: React.FC<UsuariosSectionProps> = ({
                     <p className="text-xs" style={{ color: colors.labelColor }}>{u.email}</p>
                   </td>
                   <td className="px-5 py-4">
-                    <Badge style={{ color: u.perfil === 'coordenador' ? accentOrange : accentBlue }}>
+                    <Badge style={{
+                      color: u.perfil === 'coordenador' ? accentOrange : accentBlue,
+                      background: u.perfil === 'coordenador' ? 'hsla(30,95%,55%,0.12)' : 'hsla(210,80%,55%,0.12)',
+                      border: u.perfil === 'coordenador' ? '1px solid hsla(30,95%,55%,0.4)' : '1px solid hsla(210,80%,55%,0.4)',
+                    }}>
                       {u.perfil}
                     </Badge>
                   </td>
@@ -324,20 +328,18 @@ const UsuariosSection: React.FC<UsuariosSectionProps> = ({
                   onChange={e => setNewUser({ ...newUser, senha: e.target.value })}
                   style={inputStyle}
                 />
-                <Button
+                <button
                   type="button"
                   onClick={() => {
                     const senhaForte = generateSecurePassword();
                     setNewUser({ ...newUser, senha: senhaForte });
                     toastSuccess('Senha forte gerada!');
                   }}
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  style={{ borderColor: accentOrange, color: accentOrange }}
+                  className="w-full px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
+                  style={{ border: `1px solid ${accentOrange}`, color: accentOrange, background: `${accentOrange}12` }}
                 >
                   Gerar Senha Forte
-                </Button>
+                </button>
               </div>
             )}
             <Input
@@ -385,57 +387,58 @@ const UsuariosSection: React.FC<UsuariosSectionProps> = ({
             </Select>
           </div>
           <DialogFooter>
-            <Button
-              onClick={() => {
-                setUserDialog(false);
-                setEditUser({});
-              }}
-              variant="outline"
+            <button
+              type="button"
+              onClick={() => { setUserDialog(false); setEditUser({}); }}
+              className="px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, background: 'transparent' }}
             >
               Cancelar
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
               onClick={editUser.id ? handleEditUser : handleCreateUser}
-              style={{ background: accentBlue }}
+              className="px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ background: accentBlue, color: 'white' }}
             >
               {editUser.id ? 'Salvar' : 'Criar'}
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Dialog: Usuário Criado com Sucesso */}
       <Dialog open={!!createdUserData} onOpenChange={() => setCreatedUserData(null)}>
-        <DialogContent style={{ background: 'hsl(220, 50%, 12%)', border: `1px solid ${accentBlue}33` }}>
+        <DialogContent style={{ background: colors.panelBg, border: `1px solid ${accentBlue}33` }}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2" style={{ color: colors.textPrimary }}>
-              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                <Check className="h-5 w-5 text-green-500" />
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'hsla(152, 60%, 40%, 0.2)' }}>
+                <Check className="h-5 w-5" style={{ color: 'hsl(152, 60%, 45%)' }} />
               </div>
               Usuário Criado com Sucesso!
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
-              <p className="text-yellow-400 text-sm mb-3 flex items-center gap-2">
+            <div className="rounded-lg p-4" style={{ background: 'hsla(38, 92%, 50%, 0.08)', border: '1px solid hsla(38, 92%, 50%, 0.3)' }}>
+              <p className="text-sm mb-3 flex items-center gap-2" style={{ color: 'hsl(38, 80%, 40%)' }}>
                 <AlertTriangle className="h-4 w-4" />
                 GUARDE ESTAS INFORMAÇÕES!
               </p>
 
               <div className="space-y-3">
                 <div>
-                  <p className="text-gray-400 text-xs mb-1">Nome:</p>
+                  <p className="text-xs mb-1" style={{ color: colors.labelColor }}>Nome:</p>
                   <p className="font-medium" style={{ color: colors.textPrimary }}>{createdUserData?.nome}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-xs mb-1">Email:</p>
-                  <p className="text-blue-400 font-mono text-sm">{createdUserData?.email}</p>
+                  <p className="text-xs mb-1" style={{ color: colors.labelColor }}>Email:</p>
+                  <p className="font-mono text-sm" style={{ color: accentBlue }}>{createdUserData?.email}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-xs mb-1">Senha:</p>
+                  <p className="text-xs mb-1" style={{ color: colors.labelColor }}>Senha:</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-green-400 font-mono text-sm bg-black/30 px-3 py-1 rounded">
+                    <p className="font-mono text-sm px-3 py-1 rounded" style={{ color: 'hsl(152, 60%, 45%)', background: colors.inputBg }}>
                       {createdUserData?.senha}
                     </p>
                   </div>
@@ -443,32 +446,33 @@ const UsuariosSection: React.FC<UsuariosSectionProps> = ({
               </div>
             </div>
 
-            <p className="text-gray-400 text-xs text-center">
-              Esta senha <span className="text-yellow-400 font-bold">não será mostrada novamente</span>.
+            <p className="text-xs text-center" style={{ color: colors.labelColor }}>
+              Esta senha <span style={{ color: 'hsl(38, 80%, 40%)', fontWeight: 'bold' }}>não será mostrada novamente</span>.
             </p>
           </div>
 
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button
+            <button
+              type="button"
               onClick={() => {
                 const dados = `Nome: ${createdUserData?.nome}\nEmail: ${createdUserData?.email}\nSenha: ${createdUserData?.senha}`;
                 navigator.clipboard?.writeText(dados);
                 toastSuccess('Dados copiados para a área de transferência!');
               }}
-              variant="outline"
-              style={{ borderColor: accentBlue, color: accentBlue }}
-              className="flex-1"
+              className="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ border: `1px solid ${accentBlue}`, color: accentBlue, background: `${accentBlue}12` }}
             >
               Copiar Dados
-            </Button>
+            </button>
 
-            <Button
+            <button
+              type="button"
               onClick={() => setCreatedUserData(null)}
-              style={{ background: accentBlue }}
-              className="flex-1"
+              className="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ background: accentBlue, color: 'white' }}
             >
               OK
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -499,11 +503,24 @@ const UsuariosSection: React.FC<UsuariosSectionProps> = ({
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setResetSenhaDialog(false)} variant="outline">Cancelar</Button>
-            <Button onClick={handleResetSenha} disabled={resetSenhaLoading} style={{ background: accentOrange }}>
-              <KeyRound className="h-4 w-4 mr-2" />
+            <button
+              type="button"
+              onClick={() => setResetSenhaDialog(false)}
+              className="px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, background: 'transparent' }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleResetSenha}
+              disabled={resetSenhaLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+              style={{ background: accentOrange, color: 'white' }}
+            >
+              <KeyRound className="h-4 w-4" />
               {resetSenhaLoading ? 'Resetando...' : 'Resetar Senha'}
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -531,22 +548,25 @@ const UsuariosSection: React.FC<UsuariosSectionProps> = ({
             </p>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
+            <button
+              type="button"
               onClick={() => {
                 navigator.clipboard.writeText(resetSenhaGerada || '');
                 toastSuccess('Senha copiada!');
               }}
-              style={{ borderColor: accentBlue, color: accentBlue }}
+              className="px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ border: `1px solid ${accentBlue}`, color: accentBlue, background: `${accentBlue}12` }}
             >
               Copiar
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
               onClick={() => setResetSenhaGerada(null)}
-              style={{ background: accentOrange }}
+              className="px-4 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ background: accentOrange, color: 'white' }}
             >
               Fechar
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -270,7 +270,7 @@ const ValidacaoSection: React.FC<ValidacaoSectionProps> = ({
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={6} className="px-8 py-6 bg-black/20">
+                        <td colSpan={6} className="px-8 py-6" style={{ background: colors.tableBg }}>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <p className="mb-2" style={{ color: colors.textPrimary }}>
@@ -325,9 +325,9 @@ const ValidacaoSection: React.FC<ValidacaoSectionProps> = ({
                                     <ExternalLink className="h-4 w-4" /> Abrir Certificado
                                   </a>
                                   {certData.texto_extraido && (
-                                    <div className="p-3 bg-black/40 rounded-lg border border-white/5">
-                                      <p className="text-[10px] uppercase text-slate-500 mb-1">OCR Extraído</p>
-                                      <p className="text-xs text-slate-400 leading-relaxed max-h-32 overflow-y-auto">
+                                    <div className="p-3 rounded-lg" style={{ background: colors.inputBg, border: `1px solid ${colors.cardBorder}` }}>
+                                      <p className="text-[10px] uppercase mb-1" style={{ color: colors.labelColor }}>OCR Extraído</p>
+                                      <p className="text-xs leading-relaxed max-h-32 overflow-y-auto" style={{ color: colors.textSecondary }}>
                                         {certData.texto_extraido}
                                       </p>
                                     </div>
@@ -348,7 +348,7 @@ const ValidacaoSection: React.FC<ValidacaoSectionProps> = ({
                                   )}
                                 </div>
                               ) : (
-                                <p className="text-gray-400">Certificado não disponível</p>
+                                <p style={{ color: colors.labelColor }}>Certificado não disponível</p>
                               )}
                             </div>
                           </div>

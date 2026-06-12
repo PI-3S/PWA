@@ -254,7 +254,7 @@ const RegrasSection: React.FC<RegrasSectionProps> = ({
             Regras de Atividades Complementares
           </h2>
         </div>
-        <Button onClick={openCreateDialog} className="bg-orange-600 hover:bg-orange-500 text-white">
+        <Button onClick={openCreateDialog} className="hover:opacity-90 transition-opacity" style={{ background: accentOrange, color: 'white' }}>
           <Plus className="h-4 w-4 mr-2" />
           Nova Regra
         </Button>
@@ -381,31 +381,33 @@ const RegrasSection: React.FC<RegrasSectionProps> = ({
                 </div>
 
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
+                    type="button"
                     onClick={() => handleToggleStatus(regra)}
-                    style={{ borderColor: colors.cardBorder }}
                     title={regra.ativo ? 'Desativar' : 'Ativar'}
+                    className="p-2 rounded-md transition-opacity hover:opacity-70"
+                    style={{ border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, background: 'transparent' }}
                   >
                     {regra.ativo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => openEditDialog(regra)}
-                    style={{ borderColor: colors.cardBorder }}
+                    title="Editar"
+                    className="p-2 rounded-md transition-opacity hover:opacity-70"
+                    style={{ border: `1px solid ${colors.cardBorder}`, color: colors.textPrimary, background: 'transparent' }}
                   >
                     <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => regra.id && handleDelete(regra.id)}
-                    style={{ borderColor: 'hsla(0, 70%, 50%, 0.3)', color: 'hsl(0, 70%, 60%)' }}
+                    title="Excluir"
+                    className="p-2 rounded-md transition-opacity hover:opacity-70"
+                    style={{ border: '1px solid hsla(0, 70%, 50%, 0.3)', color: 'hsl(0, 70%, 60%)', background: 'transparent' }}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>
@@ -541,13 +543,19 @@ const RegrasSection: React.FC<RegrasSectionProps> = ({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} style={{ borderColor: colors.cardBorder }}>
+            <button
+              type="button"
+              onClick={() => setDialogOpen(false)}
+              className="px-4 py-2 rounded-md text-sm transition-opacity hover:opacity-70"
+              style={{ border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, background: 'transparent' }}
+            >
               Cancelar
-            </Button>
+            </button>
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="bg-orange-600 hover:bg-orange-500 text-white"
+              className="hover:opacity-90 transition-opacity"
+              style={{ background: accentOrange, color: 'white' }}
             >
               {isSaving ? <Loader2 className="animate-spin mr-2" /> : null}
               {editMode ? 'Salvar Alterações' : 'Criar Regra'}
